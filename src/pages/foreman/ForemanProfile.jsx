@@ -6,19 +6,10 @@ import Input from '../../components/Input';
 import Card from '../../components/Card';
 
 /**
- * TechnicianProfile — editable profile form page.
- * Matches Figma frame "Technician Profile - Simplified & Enlarged" (node 3:46).
- *
- * Fields:
- *   - First Name (editable)
- *   - Last Name (editable)
- *   - Mobile (read-only — phone is the login credential)
- *   - Email (optional, editable)
- *
- * Footer:
- *   - "Last logged in" timestamp
+ * ForemanProfile — editable profile form page for foremen.
+ * Uses the exact same design and structure as TechnicianProfile.
  */
-export default function TechnicianProfile() {
+export default function ForemanProfile() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
 
@@ -32,14 +23,12 @@ export default function TechnicianProfile() {
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate save latency (replace with real API call later)
     await new Promise((r) => setTimeout(r, 600));
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  // Format a plausible "last logged in" timestamp
   const lastLogin = new Date().toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',

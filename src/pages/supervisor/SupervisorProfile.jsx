@@ -6,40 +6,28 @@ import Input from '../../components/Input';
 import Card from '../../components/Card';
 
 /**
- * TechnicianProfile — editable profile form page.
- * Matches Figma frame "Technician Profile - Simplified & Enlarged" (node 3:46).
- *
- * Fields:
- *   - First Name (editable)
- *   - Last Name (editable)
- *   - Mobile (read-only — phone is the login credential)
- *   - Email (optional, editable)
- *
- * Footer:
- *   - "Last logged in" timestamp
+ * SupervisorProfile — editable profile form page for supervisors.
+ * Matches Stitch screen "Supervisor Profile - Edit Mode" (ID: 26baa1d0572a41aab5a56ba30a60c2a8).
  */
-export default function TechnicianProfile() {
+export default function SupervisorProfile() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
 
-  // Split the full name into first / last for the form fields
-  const nameParts = (user?.name || '').split(' ');
+  const nameParts = (user?.name || 'Afsal Mohammed').split(' ');
   const [firstName, setFirstName] = useState(nameParts[0] || '');
   const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') || '');
-  const [email, setEmail] = useState(user?.email || '');
+  const [email, setEmail] = useState(user?.email || 'afsal.m@fieldlink.pro');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate save latency (replace with real API call later)
     await new Promise((r) => setTimeout(r, 600));
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  // Format a plausible "last logged in" timestamp
   const lastLogin = new Date().toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -85,10 +73,9 @@ export default function TechnicianProfile() {
 
       {/* ── Main Content ──────────────────────────────────────── */}
       <div className="flex flex-col items-center gap-10 p-4 pt-4 pb-16">
-        {/* ── Profile Form Card ─────────────────────────────── */}
+        {/* Profile Form Card */}
         <Card className="w-full border border-border shadow-md p-6">
           <div className="flex flex-col gap-6">
-            {/* First Name */}
             <Input
               label="First Name"
               id="profile-first-name"
@@ -97,7 +84,6 @@ export default function TechnicianProfile() {
               placeholder="Enter first name"
             />
 
-            {/* Last Name */}
             <Input
               label="Last Name"
               id="profile-last-name"
@@ -106,16 +92,14 @@ export default function TechnicianProfile() {
               placeholder="Enter last name"
             />
 
-            {/* Mobile (read-only) */}
             <Input
               label="Mobile"
               id="profile-mobile"
-              value={user?.phone || ''}
+              value={user?.phone || '9876543212'}
               readOnly
               className="opacity-70"
             />
 
-            {/* Email (optional) */}
             <Input
               label="Email (Optional)"
               id="profile-email"
@@ -127,7 +111,7 @@ export default function TechnicianProfile() {
           </div>
         </Card>
 
-        {/* ── System Information ──────────────────────────────── */}
+        {/* Footer */}
         <p className="text-xs font-semibold text-text-secondary tracking-wide text-center">
           Last logged in: {lastLogin}
         </p>

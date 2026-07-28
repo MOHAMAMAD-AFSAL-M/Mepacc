@@ -7,30 +7,17 @@ import Button from '../../components/Button';
 import PinInput from '../../components/PinInput';
 
 /**
- * TechnicianChangePin — Security setup page for changing PIN.
- * Matches Figma frame "Change PIN - Security Setup" (node 3:2).
- *
- * Structure:
- *   - Top Bar Header with Back Navigation & "Change PIN" title
- *   - Main Card with 3 PIN entry sections:
- *       1. Current PIN
- *       2. Subtle Divider
- *       3. New PIN
- *       4. Confirm New PIN
- *   - Interactive validation:
- *       - Checks Current PIN against logged-in user state/mock
- *       - Checks PIN length (6 digits)
- *       - Validates New PIN vs Confirm PIN match
- *   - Save / Update Action Button with feedback & navigation
+ * ForemanChangePin — Security setup page for changing PIN for foremen.
+ * Uses the exact same design and structure as TechnicianChangePin.
  */
-export default function TechnicianChangePin() {
+export default function ForemanChangePin() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
 
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  
+
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -39,7 +26,6 @@ export default function TechnicianChangePin() {
     e.preventDefault();
     setError('');
 
-    // Validation checks
     if (currentPin.length < 6) {
       setError('Please enter your complete 6-digit current PIN.');
       return;
@@ -68,15 +54,11 @@ export default function TechnicianChangePin() {
     setLoading(true);
 
     try {
-      // Simulate API call to change PIN
       await new Promise((resolve) => setTimeout(resolve, 800));
-
       setLoading(false);
       setSuccess(true);
-
-      // Auto-navigate back after success
       setTimeout(() => {
-        navigate('/technician/account');
+        navigate('/foreman/account');
       }, 1500);
     } catch (err) {
       setLoading(false);

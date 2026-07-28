@@ -5,6 +5,12 @@ import { getAttendanceForMonth } from '../../services/attendanceService';
 import Card from '../../components/Card';
 import Select from '../../components/Select';
 
+/**
+ * ForemanCalendar — attendance & calendar overview for foremen.
+ * Uses the exact same design, layout, and attendance tracking as TechnicianCalendar,
+ * tailored for Foreman role.
+ */
+
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
@@ -12,7 +18,7 @@ const MONTHS = [
 const YEARS = [2024, 2025, 2026, 2027];
 const DAYS_OF_WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-export default function TechnicianCalendar() {
+export default function ForemanCalendar() {
   const user = useAuthStore((s) => s.user);
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // 1-indexed
@@ -34,15 +40,18 @@ export default function TechnicianCalendar() {
     const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
     const firstDayObj = new Date(selectedYear, selectedMonth - 1, 1);
 
+    // JS getDay() is 0=Sun, 1=Mon... we want Mon=0, Sun=6
     let startDayOfWeek = firstDayObj.getDay() - 1;
     if (startDayOfWeek === -1) startDayOfWeek = 6;
 
     const grid = [];
 
+    // Pad empty slots before 1st of month
     for (let i = 0; i < startDayOfWeek; i++) {
       grid.push(null);
     }
 
+    // Add real days
     for (let i = 1; i <= daysInMonth; i++) {
       const record = attendance.find((r) => r.day === i);
       grid.push({
@@ -72,10 +81,10 @@ export default function TechnicianCalendar() {
       {/* Header */}
       <header className="h-16 bg-surface border-b border-border flex items-center justify-between px-4 shrink-0 relative z-10">
         <div className="flex flex-col">
-          <h1 className="text-[20px] font-medium font-heading text-text-primary">
-            Hi, {user?.name || 'Technician'}
+          <h1 className="text-xl font-medium font-heading text-text-primary">
+            Hi, {user?.name || 'Foreman'}
           </h1>
-          <p className="text-base text-text-secondary">Technician</p>
+          <p className="text-sm text-text-secondary">Foreman</p>
         </div>
         <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40">
           <Bell size={20} className="text-text-primary" />
@@ -86,7 +95,7 @@ export default function TechnicianCalendar() {
       <div className="flex flex-col gap-6 p-4 pb-32">
         {/* KPI Widget */}
         <Card className="flex flex-col items-center justify-center p-4 py-5 gap-1">
-          <h2 className="text-[16px] text-text-secondary tracking-[1.6px] uppercase text-center">
+          <h2 className="text-xs font-semibold text-text-secondary tracking-[1.6px] uppercase text-center">
             Days Worked This Month
           </h2>
           <div className="text-[40px] font-bold font-heading text-text-primary leading-tight">
@@ -117,7 +126,10 @@ export default function TechnicianCalendar() {
             {/* Days Header */}
             <div className="grid grid-cols-7 gap-2">
               {DAYS_OF_WEEK.map((d, idx) => (
-                <div key={idx} className="text-center font-bold text-[16px] text-text-secondary">
+                <div
+                  key={idx}
+                  className="text-center font-bold text-base text-text-secondary"
+                >
                   {d}
                 </div>
               ))}
@@ -126,9 +138,16 @@ export default function TechnicianCalendar() {
             {/* Days Grid */}
             <div className="grid grid-cols-7 gap-2">
               {calendarGrid.map((cell, idx) => (
-                <div key={idx} className="flex items-center justify-center h-[26px]">
+                <div
+                  key={idx}
+                  className="flex items-center justify-center h-[26px]"
+                >
                   {cell ? (
-                    <div className={`flex items-center justify-center w-full h-full rounded-sm text-base ${getStatusStyles(cell.status)}`}>
+                    <div
+                      className={`flex items-center justify-center w-full h-full rounded-sm text-base ${getStatusStyles(
+                        cell.status
+                      )}`}
+                    >
                       {cell.day}
                     </div>
                   ) : null}
