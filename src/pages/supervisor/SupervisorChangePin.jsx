@@ -7,30 +7,16 @@ import Button from '../../components/Button';
 import PinInput from '../../components/PinInput';
 
 /**
- * TechnicianChangePin — Security setup page for changing PIN.
- * Matches Figma frame "Change PIN - Security Setup" (node 3:2).
- *
- * Structure:
- *   - Top Bar Header with Back Navigation & "Change PIN" title
- *   - Main Card with 3 PIN entry sections:
- *       1. Current PIN
- *       2. Subtle Divider
- *       3. New PIN
- *       4. Confirm New PIN
- *   - Interactive validation:
- *       - Checks Current PIN against logged-in user state/mock
- *       - Checks PIN length (6 digits)
- *       - Validates New PIN vs Confirm PIN match
- *   - Save / Update Action Button with feedback & navigation
+ * SupervisorChangePin — Security setup page for changing PIN for supervisors.
  */
-export default function TechnicianChangePin() {
+export default function SupervisorChangePin() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
 
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  
+
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -39,7 +25,6 @@ export default function TechnicianChangePin() {
     e.preventDefault();
     setError('');
 
-    // Validation checks
     if (currentPin.length < 6) {
       setError('Please enter your complete 6-digit current PIN.');
       return;
@@ -68,15 +53,11 @@ export default function TechnicianChangePin() {
     setLoading(true);
 
     try {
-      // Simulate API call to change PIN
       await new Promise((resolve) => setTimeout(resolve, 800));
-
       setLoading(false);
       setSuccess(true);
-
-      // Auto-navigate back after success
       setTimeout(() => {
-        navigate('/technician/account');
+        navigate('/supervisor/account');
       }, 1500);
     } catch (err) {
       setLoading(false);
@@ -91,7 +72,7 @@ export default function TechnicianChangePin() {
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* ── Header ────────────────────────────────────────────── */}
+      {/* Header */}
       <header className="h-16 bg-surface border-b border-border flex items-center gap-3 px-4 shrink-0 relative z-10">
         <button
           onClick={() => navigate(-1)}
@@ -105,7 +86,7 @@ export default function TechnicianChangePin() {
         </h1>
       </header>
 
-      {/* ── Main Content ──────────────────────────────────────── */}
+      {/* Main Content */}
       <div className="flex flex-col gap-6 p-4 pb-32 max-w-md mx-auto w-full">
         {/* Success Banner */}
         {success && (
@@ -128,7 +109,6 @@ export default function TechnicianChangePin() {
 
         {/* PIN Setup Card */}
         <Card padding="none" className="p-6 border border-border bg-surface-card shadow-md flex flex-col gap-6">
-          {/* Section 1: Current PIN */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
               Current PIN
@@ -142,10 +122,8 @@ export default function TechnicianChangePin() {
             />
           </div>
 
-          {/* Subtle Divider */}
           <div className="border-b border-border my-1" />
 
-          {/* Section 2: New PIN */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
               New PIN
@@ -158,7 +136,6 @@ export default function TechnicianChangePin() {
             />
           </div>
 
-          {/* Section 3: Confirm New PIN */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
               Confirm New PIN
@@ -172,7 +149,6 @@ export default function TechnicianChangePin() {
             />
           </div>
 
-          {/* Submit Action Area */}
           <div className="pt-2">
             <Button
               size="lg"

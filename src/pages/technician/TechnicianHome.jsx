@@ -77,7 +77,7 @@ export default function TechnicianHome() {
   return (
     <div className="flex flex-col min-h-full">
       {/* Header */}
-      <header className="bg-surface border-b border-border flex items-center justify-between py-4 px-6 shrink-0 relative z-10">
+      <header className="h-16 bg-surface border-b border-border flex items-center justify-between px-4 shrink-0 relative z-10">
         <div className="flex flex-col">
           <h1 className="text-xl font-medium font-heading text-text-primary">
             Hi, {user?.name || 'Technician'}

@@ -1,20 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { Bell, Building2, Lock, ChevronRight, LogOut, User } from 'lucide-react';
+import { Bell, Building2, Lock, ChevronRight, LogOut } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 
 /**
- * TechnicianAccount — Account & Settings landing page.
- * Matches Figma frame "Technician Account & Settings" (node 3:87).
- *
- * Sections:
- *   1. Header — "Account" title + notification bell
- *   2. Profile Card — avatar, name, role, "View & Edit Profile" link
- *   3. Settings List — MEP Company ID (read-only), Change PIN (navigable)
- *   4. Log Out button
+ * ForemanAccount — Account & Settings landing page for foremen.
+ * Uses the exact same design and structure as TechnicianAccount.
  */
-export default function TechnicianAccount() {
+export default function ForemanAccount() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
@@ -51,7 +45,7 @@ export default function TechnicianAccount() {
       <div className="flex flex-col gap-6 p-4 pb-32">
         {/* ── Profile Card ───────────────────────────────────── */}
         <button
-          onClick={() => navigate('/technician/profile')}
+          onClick={() => navigate('/foreman/profile')}
           className="w-full text-left"
         >
           <Card
@@ -81,7 +75,7 @@ export default function TechnicianAccount() {
               <p className="text-sm text-text-secondary mb-1">
                 {user?.role
                   ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
-                  : 'Technician'}
+                  : 'Foreman'}
               </p>
               <span className="text-xs font-semibold text-primary-dark tracking-wide">
                 View & Edit Profile
@@ -110,7 +104,7 @@ export default function TechnicianAccount() {
 
           {/* Item 2: Change PIN */}
           <button
-            onClick={() => navigate('/technician/change-pin')}
+            onClick={() => navigate('/foreman/change-pin')}
             className="flex items-center justify-between w-full px-4 py-4 hover:bg-surface transition-colors duration-fast"
           >
             <div className="flex items-center gap-4">
