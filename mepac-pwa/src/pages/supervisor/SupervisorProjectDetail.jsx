@@ -26,6 +26,7 @@ import { api } from '../../convex.js';
 import useAuthStore from '../../store/authStore';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
+import { getProjectGradient, getProjectColor } from '../../utils/colors';
 
 export default function SupervisorProjectDetail() {
   const { projectId } = useParams();
@@ -206,13 +207,21 @@ export default function SupervisorProjectDetail() {
       <div className="flex flex-col gap-5 p-4 pb-32 max-w-4xl mx-auto w-full">
 
         {/* ── Hero Image & Summary Card ──────────────────────── */}
-        <Card padding="none" className="relative w-full h-44 overflow-hidden border border-border shrink-0 shadow-sm">
-          <img
-            src={project.imageUrl || 'https://images.unsplash.com/photo-1541888081636-67a550d5145b?auto=format&fit=crop&q=80&w=800'}
-            alt={project.name}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+        <Card
+          padding="none"
+          className="relative w-full h-44 overflow-hidden border border-border shrink-0 shadow-md"
+          style={{
+            background: getProjectGradient(projectId),
+          }}
+        >
+          {project.imageUrl && (
+            <img
+              src={project.imageUrl}
+              alt={project.name}
+              className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
           <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white">
             <div className="flex flex-col gap-1">

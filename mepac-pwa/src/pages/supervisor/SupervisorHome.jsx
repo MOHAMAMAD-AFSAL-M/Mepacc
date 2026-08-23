@@ -23,6 +23,7 @@ import { clockIn, clockOut, getTodayStatus } from '../../services/attendanceServ
 import { calculateDistanceMeters, getCurrentPosition } from '../../utils/geoUtils';
 import Card from '../../components/Card';
 import NotificationBellButton from '../../components/NotificationBellButton';
+import { getProjectGradient, getProjectColor } from '../../utils/colors';
 
 /**
  * SupervisorHome — Dashboard for Supervisor role.
@@ -657,8 +658,15 @@ export default function SupervisorHome() {
                   key={site.id}
                   padding="none"
                   onClick={() => navigate(`/supervisor/projects/${site.id}`)}
-                  className="flex items-center justify-between p-4 border border-border shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-primary/50"
+                  className="flex items-center justify-between p-4 border border-border shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-primary/50 relative overflow-hidden bg-surface-card"
                 >
+                  {/* Left Gradient Accent Strip matching Admin */}
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-1.5"
+                    style={{
+                      background: getProjectGradient(site.id),
+                    }}
+                  />
                   <div className="flex flex-col gap-1.5 min-w-0 pr-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-lg font-bold font-heading text-text-primary group-hover:text-primary transition-colors">

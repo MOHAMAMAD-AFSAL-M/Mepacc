@@ -6,6 +6,7 @@ import { clockIn, clockOut, getTodayStatus } from '../../services/attendanceServ
 import { calculateDistanceMeters, getCurrentPosition } from '../../utils/geoUtils';
 import Card from '../../components/Card';
 import NotificationBellButton from '../../components/NotificationBellButton';
+import { getProjectGradient } from '../../utils/colors';
 
 export default function TechnicianHome() {
   const user = useAuthStore((s) => s.user);
@@ -441,9 +442,21 @@ export default function TechnicianHome() {
             )}
 
             {/* Project Widget */}
-            <Card padding="none" className="relative w-full h-[200px] overflow-hidden shrink-0 border border-border">
-              <img src={job.imageUrl} className="absolute inset-0 w-full h-full object-cover" alt="Site" />
-              <div className="absolute inset-0 bg-black/50" />
+            <Card
+              padding="none"
+              className="relative w-full h-[200px] overflow-hidden shrink-0 border border-border shadow-md"
+              style={{
+                background: getProjectGradient(job.id || job._id),
+              }}
+            >
+              {job.imageUrl && (
+                <img
+                  src={job.imageUrl}
+                  className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50"
+                  alt="Site"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
               
               <div className="absolute inset-0 flex items-end justify-between p-6">
                 <div className="flex flex-col gap-1">

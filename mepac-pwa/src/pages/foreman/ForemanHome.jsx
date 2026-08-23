@@ -21,6 +21,7 @@ import { calculateDistanceMeters, getCurrentPosition } from '../../utils/geoUtil
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import NotificationBellButton from '../../components/NotificationBellButton';
+import { getProjectGradient } from '../../utils/colors';
 
 /**
  * ForemanHome — main dashboard for the foreman role.
@@ -485,14 +486,19 @@ export default function ForemanHome() {
 
           <Card
             padding="none"
-            className="relative w-full min-h-[192px] overflow-hidden shrink-0 border border-border cursor-pointer active:scale-[0.98] transition-transform"
+            className="relative w-full min-h-[192px] overflow-hidden shrink-0 border border-border cursor-pointer active:scale-[0.98] transition-transform shadow-md"
+            style={{
+              background: getProjectGradient(job.id || job._id),
+            }}
           >
-            <img
-              src={job.imageUrl}
-              className="absolute inset-0 w-full h-full object-cover"
-              alt="Construction site"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+            {job.imageUrl && (
+              <img
+                src={job.imageUrl}
+                className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-50"
+                alt="Construction site"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
 
             <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
               <div className="flex flex-col gap-0.5">

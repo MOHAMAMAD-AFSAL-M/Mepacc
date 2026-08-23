@@ -6,6 +6,7 @@ import { api } from '../../convex.js';
 import useAuthStore from '../../store/authStore';
 import Card from '../../components/Card';
 import NotificationBellButton from '../../components/NotificationBellButton';
+import { getProjectGradient } from '../../utils/colors';
 
 export default function SupervisorProjects() {
   const navigate = useNavigate();
@@ -151,49 +152,71 @@ export default function SupervisorProjects() {
                     key={project.id}
                     padding="none"
                     onClick={() => navigate(`/supervisor/projects/${project.id}`)}
-                    className="p-4 border border-border shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center justify-between group relative overflow-hidden"
+                    className="border border-border shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col group relative overflow-hidden rounded-lg bg-surface-card"
                   >
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold font-heading text-text-primary">
-                          {project.name}
-                        </h3>
-                        {project.isAssignedToMe && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
-                            Assigned to Me
-                          </span>
+                    {/* Top Gradient / Image Banner matching Admin Console */}
+                    <div
+                      className="h-32 w-full relative overflow-hidden flex items-start justify-between p-3"
+                      style={{
+                        background: getProjectGradient(project.id),
+                      }}
+                    >
+                      {project.imageUrl && (
+                        <img
+                          src={project.imageUrl}
+                          alt={project.name}
+                          className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-40 group-hover:scale-105 transition-transform duration-300"
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+
+                      {/* Supervisor Visit Overlay Pill (Matching Admin Console) */}
+                      <div className="relative z-10">
+                        {project.visited ? (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-600/90 text-white text-[11px] font-bold shadow-md backdrop-blur-xs">
+                            <CheckCircle2 size={12} strokeWidth={2.5} />
+                            <span>Visited {project.visitedAtTimeStr ? `at ${project.visitedAtTimeStr}` : 'Today'}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/90 text-white text-[11px] font-bold shadow-md backdrop-blur-xs">
+                            <Circle size={10} strokeWidth={2.5} />
+                            <span>No Visit Today</span>
+                          </div>
                         )}
                       </div>
 
-                      <a
-                        href={mapsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-semibold"
-                      >
-                        <MapPin size={13} />
-                        <span>{project.location}</span>
-                        <ExternalLink size={11} />
-                      </a>
-
-                      {project.visited ? (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold w-fit mt-1">
-                          <CheckCircle2 size={13} className="text-emerald-600 shrink-0" strokeWidth={2.5} />
-                          <span>Inspected Today {project.visitedAtTimeStr ? `(${project.visitedAtTimeStr})` : ''}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold w-fit mt-1">
-                          <Circle size={12} className="text-amber-600 shrink-0" strokeWidth={2} />
-                          <span>Awaiting Visit Today</span>
-                        </div>
+                      {project.isAssignedToMe && (
+                        <span className="relative z-10 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white backdrop-blur-md border border-white/30">
+                          Assigned
+                        </span>
                       )}
                     </div>
 
-                    <ChevronRight
-                      size={20}
-                      className="text-text-muted group-hover:text-primary transition-colors shrink-0"
-                    />
+                    {/* Card Content */}
+                    <div className="p-3.5 flex items-center justify-between gap-2">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <h3 className="text-base font-bold font-heading text-text-primary group-hover:text-primary transition-colors truncate">
+                          {project.name}
+                        </h3>
+
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-primary transition-colors font-medium truncate"
+                        >
+                          <MapPin size={12} className="text-primary shrink-0" />
+                          <span className="truncate">{project.location}</span>
+                          <ExternalLink size={10} className="shrink-0 opacity-70" />
+                        </a>
+                      </div>
+
+                      <ChevronRight
+                        size={18}
+                        className="text-text-muted group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0"
+                      />
+                    </div>
                   </Card>
                 );
               })
