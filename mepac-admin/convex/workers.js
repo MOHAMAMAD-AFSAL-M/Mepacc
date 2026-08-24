@@ -213,21 +213,42 @@ export const resetPin = mutation({
 
 export const loginWithPin = mutation({
   args: {
-    mobile: v.string(),
+    mobile: v.string(), // can be workerCode (e.g. DES-001) or mobile number (e.g. 9876543210)
     pin: v.string(),
     sessionId: v.optional(v.string()),
     deviceName: v.optional(v.string()),
     forceOverride: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const cleanMobile = args.mobile.replace(/\D/g, "");
+    const rawInput = (args.mobile || "").trim();
+    const cleanDigits = rawInput.replace(/\D/g, "");
+    const lowerInput = rawInput.toLowerCase();
+    const cleanCode = lowerInput.replace(/[^a-z0-9]/g, "");
+
     const allWorkers = await ctx.db.query("workers").collect();
-    const worker = allWorkers.find(
-      (w) => w.mobile.replace(/\D/g, "") === cleanMobile
-    );
+    const worker = allWorkers.find((w) => {
+      // 1. Match by Worker Code (e.g. "DES-001", "DES001", "des-001")
+      if (w.workerCode) {
+        const wCodeLower = w.workerCode.trim().toLowerCase();
+        const wCodeClean = wCodeLower.replace(/[^a-z0-9]/g, "");
+        if (wCodeLower === lowerInput || wCodeClean === cleanCode) {
+          return true;
+        }
+      }
+
+      // 2. Match by Mobile Number
+      if (cleanDigits.length >= 4 && w.mobile) {
+        const wMobileClean = w.mobile.replace(/\D/g, "");
+        if (wMobileClean === cleanDigits || (cleanDigits.length >= 10 && wMobileClean.endsWith(cleanDigits))) {
+          return true;
+        }
+      }
+
+      return false;
+    });
 
     if (!worker) {
-      throw new Error("Invalid mobile number or PIN");
+      throw new Error("Invalid Worker ID, Mobile number, or PIN");
     }
 
     const currentPin = worker.pin || worker.adminPin || "123456";
@@ -237,7 +258,7 @@ export const loginWithPin = mutation({
       (args.pin === "123456" && (!worker.pin || worker.pinIsDefault));
 
     if (!matchesPin && currentPin !== args.pin) {
-      throw new Error("Invalid mobile number or PIN");
+      throw new Error("Invalid Worker ID, Mobile number, or PIN");
     }
 
     if (worker.isActive === false) {

@@ -20,13 +20,13 @@ export default function LoginPage() {
   const [sessionPrompt, setSessionPrompt] = useState(null);
   const [isOverriding, setIsOverriding] = useState(false);
 
-  const canSubmit = phone.replace(/\D/g, '').length >= 10 && pin.length === 6;
+  const canSubmit = phone.trim().length >= 3 && pin.length === 6;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     clearError();
     try {
-      const res = await login(phone, pin, false);
+      const res = await login(phone.trim(), pin, false);
       if (res?.hasActiveSession) {
         setSessionPrompt(res);
         return;
@@ -43,7 +43,7 @@ export default function LoginPage() {
     setIsOverriding(true);
     clearError();
     try {
-      const res = await login(phone, pin, true);
+      const res = await login(phone.trim(), pin, true);
       if (res?.role) {
         setSessionPrompt(null);
         navigate(`/${res.role}/home`, { replace: true });
@@ -78,28 +78,28 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Mobile Number */}
+            {/* Worker ID / Mobile Number */}
             <div>
               <label
                 htmlFor="phone"
                 className="block text-xs font-semibold uppercase tracking-wider text-text-primary mb-1"
               >
-                Mobile Number
+                Worker ID or Mobile Number
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">
-                  <Phone size={14} strokeWidth={2} />
+                  <Smartphone size={14} strokeWidth={2} />
                 </div>
                 <input
                   id="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
+                  type="text"
+                  autoCapitalize="characters"
+                  maxLength={20}
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder="Enter mobile number"
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. DES-001 or 9876543210"
                   required
-                  className="w-full pl-10 pr-3 py-2.5 rounded-sm border border-border-strong bg-surface-card text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors duration-fast"
+                  className="w-full pl-10 pr-3 py-2.5 rounded-sm border border-border-strong bg-surface-card text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors duration-fast font-medium"
                 />
               </div>
             </div>

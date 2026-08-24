@@ -22,17 +22,17 @@ export function getDeviceName() {
 }
 
 /**
- * Login with 10-digit phone number and 6-digit PIN.
- * @param {string} phone – 10-digit mobile number
- * @param {string} pin   – 6-digit PIN
+ * Login with Worker ID (e.g. DES-001) or 10-digit mobile number, and 6-digit PIN.
+ * @param {string} identifier – Worker ID or mobile number
+ * @param {string} pin        – 6-digit PIN
  * @returns {Promise<{ user: object, role: string, sessionId: string }>}
  */
-export async function login(phone, pin, forceOverride = false) {
-  const normalizedPhone = phone.replace(/\D/g, '');
+export async function login(identifier, pin, forceOverride = false) {
+  const cleanInput = (identifier || '').trim();
   const sessionId = getOrCreateDeviceSessionId();
   const deviceName = getDeviceName();
   return await convexClient.mutation(api.workers.loginWithPin, {
-    mobile: normalizedPhone,
+    mobile: cleanInput,
     pin,
     sessionId,
     deviceName,
