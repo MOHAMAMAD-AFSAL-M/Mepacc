@@ -31,6 +31,7 @@ import SupervisorChangePin from './pages/supervisor/SupervisorChangePin';
 import DesignerProjects from './pages/designer/DesignerProjects';
 import DesignerProjectDrawings from './pages/designer/DesignerProjectDrawings';
 import DesignerAccount from './pages/designer/DesignerAccount';
+import DesignerProfile from './pages/designer/DesignerProfile';
 import DesignerChangePin from './pages/designer/DesignerChangePin';
 
 /**
@@ -41,6 +42,7 @@ import DesignerChangePin from './pages/designer/DesignerChangePin';
  *   /technician/*       → ProtectedRoute(role=technician) → TechnicianLayout
  *   /foreman/*          → ProtectedRoute(role=foreman)    → ForemanLayout
  *   /supervisor/*       → ProtectedRoute(role=supervisor) → SupervisorLayout
+ *   /designer/*         → ProtectedRoute(role=designer)   → DesignerLayout
  *   /                   → redirect to /login
  */
 import SessionEnforcerModal from './components/SessionEnforcerModal';
@@ -122,6 +124,7 @@ export default function App() {
           <Route path="projects" element={<DesignerProjects />} />
           <Route path="projects/:projectId" element={<DesignerProjectDrawings />} />
           <Route path="account" element={<DesignerAccount />} />
+          <Route path="profile" element={<DesignerProfile />} />
           <Route path="change-pin" element={<DesignerChangePin />} />
         </Route>
 
