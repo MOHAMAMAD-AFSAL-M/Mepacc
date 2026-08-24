@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Phone, ArrowRight, ShieldAlert, Smartphone, RefreshCw, X } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import PinInput from '../components/PinInput';
-import GoogleSignInButton from '../components/GoogleSignInButton';
 
 /**
  * LoginPage — phone + 6-digit PIN login screen.
@@ -136,18 +135,6 @@ export default function LoginPage() {
                 )}
               </button>
             </div>
-
-            {/* OR Divider */}
-            <div className="relative my-4 flex items-center justify-center">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-              <span className="relative bg-surface-card px-2 text-[11px] font-semibold uppercase text-text-muted">Or continue with</span>
-            </div>
-
-            {/* Google Sign-in */}
-            <GoogleSignInButton 
-              text="Sign in with Google"
-              onClick={() => alert("Google OAuth authentication is active. Select your Google account to log in.")}
-            />
           </div>
 
           {/* Helper text */}
@@ -155,38 +142,10 @@ export default function LoginPage() {
             <p className="text-center text-text-secondary text-xs leading-relaxed">
               For first-time login, please use the 6-digit PIN
               <br />
-              provided by your Supervisor or sign in via Gmail.
+              provided by your Company Administrator.
             </p>
           </div>
         </form>
-
-        {/* Dev Credentials Chips */}
-        <div className="mt-4 flex flex-col items-center gap-1.5 text-xs text-text-muted">
-          <span className="font-semibold uppercase tracking-wider text-[10px]">Quick Test Logins:</span>
-          <div className="flex flex-wrap justify-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => { setPhone('9995940091'); setPin('123456'); clearError(); }}
-              className="px-2.5 py-1 bg-surface-card border border-border hover:border-primary rounded text-[11px] text-text-secondary hover:text-primary transition-colors"
-            >
-              Technician: <strong className="font-mono text-text-primary">9995940091</strong> (123456)
-            </button>
-            <button
-              type="button"
-              onClick={() => { setPhone('6282648571'); setPin('628264'); clearError(); }}
-              className="px-2.5 py-1 bg-surface-card border border-border hover:border-primary rounded text-[11px] text-text-secondary hover:text-primary transition-colors"
-            >
-              Foreman: <strong className="font-mono text-text-primary">6282648571</strong> (628264)
-            </button>
-            <button
-              type="button"
-              onClick={() => { setPhone('7907228781'); setPin('790722'); clearError(); }}
-              className="px-2.5 py-1 bg-surface-card border border-border hover:border-primary rounded text-[11px] text-text-secondary hover:text-primary transition-colors"
-            >
-              Supervisor: <strong className="font-mono text-text-primary">7907228781</strong> (790722)
-            </button>
-          </div>
-        </div>
 
         {/* ── Active Session Conflict Confirmation Modal ── */}
         {sessionPrompt && (
