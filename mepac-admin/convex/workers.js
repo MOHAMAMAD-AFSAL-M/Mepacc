@@ -209,6 +209,26 @@ export const resetPin = mutation({
   },
 });
 
+export const updateSelfProfile = mutation({
+  args: {
+    workerId: v.id("workers"),
+    firstName: v.string(),
+    lastName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const worker = await ctx.db.get(args.workerId);
+    if (!worker) throw new Error("Worker not found");
+    await ctx.db.patch(args.workerId, {
+      firstName: args.firstName.trim(),
+      lastName: args.lastName.trim(),
+    });
+    return {
+      success: true,
+      name: `${args.firstName.trim()} ${args.lastName.trim()}`.trim(),
+    };
+  },
+});
+
 // ── PWA Auth & Profile Functions ───────────────────────────────
 
 export const loginWithPin = mutation({

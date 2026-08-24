@@ -66,7 +66,7 @@ export default function LoginPage() {
           {/* Brand */}
           <div className="text-center mb-6 pb-2">
             <h1 className="text-[30px] font-bold text-primary-dark font-heading leading-none">
-              MEPacc
+              MEPac
             </h1>
           </div>
 

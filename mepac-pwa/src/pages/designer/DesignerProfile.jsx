@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex.js';
 import useAuthStore from '../../store/authStore';
 import Input from '../../components/Input';
 import Card from '../../components/Card';
@@ -14,6 +16,8 @@ export default function DesignerProfile() {
   const updateUser = useAuthStore((s) => s.updateUser);
   const navigate = useNavigate();
 
+  const updateProfileMutation = useMutation(api.workers.updateSelfProfile);
+
   const nameParts = (user?.name || 'Designer User').split(' ');
   const [firstName, setFirstName] = useState(user?.firstName || nameParts[0] || '');
   const [lastName, setLastName] = useState(user?.lastName || nameParts.slice(1).join(' ') || '');
@@ -23,19 +27,34 @@ export default function DesignerProfile() {
 
   const handleSave = async () => {
     setSaving(true);
-    // Update local auth store
-    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-    updateUser({
-      name: fullName,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.trim(),
-    });
+    try {
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      
+      // Update backend if user has valid worker ID
+      if (user?.id) {
+        await updateProfileMutation({
+          workerId: user.id,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+        });
+      }
 
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+      // Update local auth store
+      updateUser({
+        name: fullName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+      });
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      alert('Failed to save profile changes.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const lastLogin = new Date().toLocaleDateString('en-US', {
