@@ -214,6 +214,61 @@ export const create = mutation({
       fileSize: args.fileSize,
     });
 
+    // ── Notify all project stakeholders and designers ───────────────
+    try {
+      const project = await ctx.db.get(args.projectId);
+      const projectName = project?.name || "Project";
+      const now = Date.now();
+      const notifTitle = `New MEP Drawing: ${args.name} (v1)`;
+      const notifDesc = `${args.category || 'Drawing'} released on ${projectName}. ${args.notes ? `Notes: ${args.notes}` : ''}`;
+
+      // 1. Notify assigned workers for this project
+      const assignments = await ctx.db
+        .query("projectAssignments")
+        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+        .collect();
+
+      for (const a of assignments) {
+        if (a.workerId !== args.workerId) {
+          await ctx.db.insert("notifications", {
+            title: notifTitle,
+            desc: notifDesc,
+            recipientWorkerId: a.workerId,
+            createdAt: now,
+            isRead: false,
+            type: "drawing",
+          });
+        }
+      }
+
+      // 2. Notify all Designers
+      const allWorkers = await ctx.db.query("workers").collect();
+      const designers = allWorkers.filter(
+        (w) => w.role === "Designer" && w._id !== args.workerId && w.isActive
+      );
+      for (const d of designers) {
+        await ctx.db.insert("notifications", {
+          title: notifTitle,
+          desc: notifDesc,
+          recipientWorkerId: d._id,
+          createdAt: now,
+          isRead: false,
+          type: "drawing",
+        });
+      }
+
+      // 3. Global admin notification
+      await ctx.db.insert("notifications", {
+        title: notifTitle,
+        desc: notifDesc,
+        createdAt: now,
+        isRead: false,
+        type: "drawing",
+      });
+    } catch (err) {
+      console.warn("Failed to generate drawing creation notification:", err);
+    }
+
     return blueprintId;
   },
 });
@@ -252,6 +307,61 @@ export const uploadRevision = mutation({
 
     // Enforce Max 3 Versions FIFO Queue: prune oldest excess versions
     await pruneOldRevisions(ctx, args.blueprintId);
+
+    // ── Notify all project stakeholders and designers ───────────────
+    try {
+      const project = await ctx.db.get(blueprint.projectId);
+      const projectName = project?.name || "Project";
+      const now = Date.now();
+      const notifTitle = `Drawing Updated: ${blueprint.name} (v${newVersion})`;
+      const notifDesc = `${blueprint.category || 'Drawing'} revised on ${projectName}. ${args.notes ? `Changes: ${args.notes}` : ''}`;
+
+      // 1. Notify assigned project workers
+      const assignments = await ctx.db
+        .query("projectAssignments")
+        .withIndex("by_project", (q) => q.eq("projectId", blueprint.projectId))
+        .collect();
+
+      for (const a of assignments) {
+        if (a.workerId !== args.workerId) {
+          await ctx.db.insert("notifications", {
+            title: notifTitle,
+            desc: notifDesc,
+            recipientWorkerId: a.workerId,
+            createdAt: now,
+            isRead: false,
+            type: "drawing",
+          });
+        }
+      }
+
+      // 2. Notify all Designers
+      const allWorkers = await ctx.db.query("workers").collect();
+      const designers = allWorkers.filter(
+        (w) => w.role === "Designer" && w._id !== args.workerId && w.isActive
+      );
+      for (const d of designers) {
+        await ctx.db.insert("notifications", {
+          title: notifTitle,
+          desc: notifDesc,
+          recipientWorkerId: d._id,
+          createdAt: now,
+          isRead: false,
+          type: "drawing",
+        });
+      }
+
+      // 3. Global admin notification
+      await ctx.db.insert("notifications", {
+        title: notifTitle,
+        desc: notifDesc,
+        createdAt: now,
+        isRead: false,
+        type: "drawing",
+      });
+    } catch (err) {
+      console.warn("Failed to generate revision notification:", err);
+    }
 
     return newVersion;
   },

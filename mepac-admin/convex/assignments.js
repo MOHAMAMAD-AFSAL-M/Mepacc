@@ -76,10 +76,26 @@ export const assign = mutation({
 
     if (existing) throw new Error("Worker is already assigned to this project");
 
-    return await ctx.db.insert("projectAssignments", {
+    const assignId = await ctx.db.insert("projectAssignments", {
       projectId: args.projectId,
       workerId: args.workerId,
     });
+
+    try {
+      const project = await ctx.db.get(args.projectId);
+      if (project) {
+        await ctx.db.insert("notifications", {
+          title: `Project Assigned: ${project.name}`,
+          desc: `You have been assigned to ${project.name} (${project.location || 'Site'}).`,
+          recipientWorkerId: args.workerId,
+          createdAt: Date.now(),
+          isRead: false,
+          type: "assignment",
+        });
+      }
+    } catch (_) {}
+
+    return assignId;
   },
 });
 

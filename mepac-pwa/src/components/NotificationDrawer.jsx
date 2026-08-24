@@ -190,31 +190,47 @@ export default function NotificationDrawer({ isOpen, onClose }) {
         </header>
 
         {/* Filter Pills */}
-        <div className="px-4 py-2.5 bg-surface border-b border-border flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setFilter('all')}
-            className={[
-              'px-3 py-1.5 rounded-full text-xs font-semibold transition-all',
-              filter === 'all'
-                ? 'bg-primary text-white shadow-xs'
-                : 'bg-surface-card border border-border text-text-secondary hover:text-text-primary',
-            ].join(' ')}
-          >
-            All ({allNotifications.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter('unread')}
-            className={[
-              'px-3 py-1.5 rounded-full text-xs font-semibold transition-all',
-              filter === 'unread'
-                ? 'bg-primary text-white shadow-xs'
-                : 'bg-surface-card border border-border text-text-secondary hover:text-text-primary',
-            ].join(' ')}
-          >
-            Unread ({unreadCount})
-          </button>
+        <div className="px-4 py-2.5 bg-surface border-b border-border flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFilter('all')}
+              className={[
+                'px-3 py-1.5 rounded-full text-xs font-semibold transition-all',
+                filter === 'all'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'bg-surface-card border border-border text-text-secondary hover:text-text-primary',
+              ].join(' ')}
+            >
+              All ({allNotifications.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter('unread')}
+              className={[
+                'px-3 py-1.5 rounded-full text-xs font-semibold transition-all',
+                filter === 'unread'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'bg-surface-card border border-border text-text-secondary hover:text-text-primary',
+              ].join(' ')}
+            >
+              Unread ({unreadCount})
+            </button>
+          </div>
+
+          {typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted' && (
+            <button
+              type="button"
+              onClick={async () => {
+                await Notification.requestPermission();
+                // Force re-render
+                setFilter((f) => f);
+              }}
+              className="text-[11px] font-semibold text-primary hover:underline"
+            >
+              Enable Push
+            </button>
+          )}
         </div>
 
         {/* Notifications List */}

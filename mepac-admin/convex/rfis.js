@@ -104,6 +104,7 @@ export const createRfi = mutation({
     const rfiCode = `RFI-2026-${randomCode}`;
     const now = Date.now();
 
+    // 1. Insert into RFIs & Disputes table
     const rfiId = await ctx.db.insert("rfis", {
       type: "rfi",
       projectId: args.projectId,
@@ -123,11 +124,49 @@ export const createRfi = mutation({
       rfiCode,
     });
 
+    // 2. Insert into Notifications for targeted worker
+    if (args.workerId && args.workerId !== args.createdByWorkerId) {
+      await ctx.db.insert("notifications", {
+        title: `RFI Assigned to You: ${args.title}`,
+        desc: `${args.createdByName} assigned ${rfiCode} on ${args.projectName}.`,
+        recipientWorkerId: args.workerId,
+        createdAt: now,
+        isRead: false,
+        type: "rfi",
+      });
+    }
+
+    // 3. Insert notification for project supervisors
+    if (args.projectId) {
+      const assignments = await ctx.db
+        .query("projectAssignments")
+        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+        .collect();
+
+      for (const a of assignments) {
+        if (a.workerId !== args.createdByWorkerId && a.workerId !== args.workerId) {
+          const worker = await ctx.db.get(a.workerId);
+          if (worker?.role === "Supervisor" || worker?.role === "Foreman") {
+            await ctx.db.insert("notifications", {
+              title: `RFI Raised: ${args.title} (${args.projectName})`,
+              desc: `${args.createdByName} (${args.createdByRole}): ${args.details}`,
+              recipientWorkerId: a.workerId,
+              createdAt: now,
+              isRead: false,
+              type: "rfi",
+            });
+          }
+        }
+      }
+    }
+
+    // 4. Global admin notification
     await ctx.db.insert("notifications", {
       title: `New RFI: ${args.title} (${args.projectName})`,
       desc: `${args.createdByName}: ${args.details}`,
       createdAt: now,
       isRead: false,
+      type: "rfi",
     });
 
     return { success: true, rfiId, rfiCode };
@@ -152,6 +191,30 @@ export const updateStatus = mutation({
       status: args.status,
       updatedAt: Date.now(),
     });
+
+    // Notify creator of status change
+    if (existing.createdByWorkerId) {
+      await ctx.db.insert("notifications", {
+        title: `RFI Status Updated: ${existing.title}`,
+        desc: `Status changed to "${args.status}" for ${existing.rfiCode} on ${existing.projectName}.`,
+        recipientWorkerId: existing.createdByWorkerId,
+        createdAt: Date.now(),
+        isRead: false,
+        type: "rfi",
+      });
+    }
+
+    // Notify assigned worker if different from creator
+    if (existing.workerId && existing.workerId !== existing.createdByWorkerId) {
+      await ctx.db.insert("notifications", {
+        title: `RFI Status Updated: ${existing.title}`,
+        desc: `Status changed to "${args.status}" for ${existing.rfiCode} on ${existing.projectName}.`,
+        recipientWorkerId: existing.workerId,
+        createdAt: Date.now(),
+        isRead: false,
+        type: "rfi",
+      });
+    }
 
     return { success: true };
   },

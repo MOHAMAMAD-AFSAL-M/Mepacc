@@ -46,11 +46,13 @@ import DesignerChangePin from './pages/designer/DesignerChangePin';
  *   /                   → redirect to /login
  */
 import SessionEnforcerModal from './components/SessionEnforcerModal';
+import PushNotificationListener from './components/PushNotificationListener';
 
 export default function App() {
   return (
     <>
       <SessionEnforcerModal />
+      <PushNotificationListener />
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
