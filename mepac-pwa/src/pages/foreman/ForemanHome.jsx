@@ -14,9 +14,10 @@ import {
   Layers,
   Navigation,
 } from 'lucide-react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex.js';
 import useAuthStore from '../../store/authStore';
-import { getCurrentJob, getAssignedProjectsForUser } from '../../services/jobService';
-import { clockIn, clockOut, getTodayStatus } from '../../services/attendanceService';
+import { clockIn, clockOut } from '../../services/attendanceService';
 import { calculateDistanceMeters, getCurrentPosition } from '../../utils/geoUtils';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
@@ -203,51 +204,51 @@ export default function ForemanHome() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [checkLocationStatus]);
 
-  // Load all assigned jobs for the foreman
-  const loadJobsData = useCallback(async () => {
-    if (!user?.id) return;
-    setLoading(true);
-    try {
-      const [allAssigned, singleJob, status] = await Promise.all([
-        getAssignedProjectsForUser(user.id),
-        getCurrentJob(user.id),
-        getTodayStatus(user.id),
-      ]);
+  // Real-time reactive queries connected to Convex backend
+  const rawAssignedProjects = useQuery(
+    api.projects.getSupervisorProjects,
+    user?.id ? { workerId: user.id } : 'skip'
+  );
+  const rawActiveJob = useQuery(
+    api.projects.getActiveJobForWorker,
+    user?.id ? { workerId: user.id } : 'skip'
+  );
+  const rawTodayStatus = useQuery(
+    api.attendance.getTodayStatus,
+    user?.id ? { workerId: user.id } : 'skip'
+  );
 
-      let jobsList = [];
-      if (allAssigned && allAssigned.length > 0) {
-        jobsList = allAssigned;
-      } else if (singleJob) {
-        jobsList = [singleJob];
-      }
-
-      setAssignedJobs(jobsList);
-      
-      const initialSelected = jobsList[0] || null;
-      setJob(initialSelected);
-      if (initialSelected) {
-        setSelectedJobId(initialSelected.id);
-      }
-
-      if (status?.isClockedIn !== undefined) {
-        setIsClockedIn(Boolean(status.isClockedIn));
-      } else if (initialSelected?.isClockedIn !== undefined) {
-        setIsClockedIn(Boolean(initialSelected.isClockedIn));
-      }
-
-      if (jobsList.length > 0) {
-        checkLocationStatus(jobsList, initialSelected?.id);
-      }
-    } catch (err) {
-      console.warn('Failed to load foreman jobs data:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, checkLocationStatus]);
-
+  // Sync assigned jobs reactively whenever admin assigns or deassigns
   useEffect(() => {
-    loadJobsData();
-  }, [loadJobsData]);
+    if (rawAssignedProjects === undefined && rawActiveJob === undefined) return;
+    setLoading(false);
+
+    let jobsList = [];
+    if (Array.isArray(rawAssignedProjects)) {
+      jobsList = rawAssignedProjects.filter((p) => p.isAssignedToMe && !p.isCompleted);
+    }
+    if (jobsList.length === 0 && rawActiveJob) {
+      jobsList = [rawActiveJob];
+    }
+
+    setAssignedJobs(jobsList);
+
+    const currentSelectedId = selectedJobIdRef.current;
+    const initialSelected = jobsList.find((j) => j.id === currentSelectedId) || jobsList[0] || null;
+    setJob(initialSelected);
+    setSelectedJobId(initialSelected?.id || null);
+
+    if (jobsList.length > 0) {
+      checkLocationStatus(jobsList, initialSelected?.id);
+    }
+  }, [rawAssignedProjects, rawActiveJob, checkLocationStatus]);
+
+  // Sync clock in status
+  useEffect(() => {
+    if (rawTodayStatus !== undefined && rawTodayStatus !== null) {
+      setIsClockedIn(Boolean(rawTodayStatus.isClockedIn));
+    }
+  }, [rawTodayStatus]);
 
   // Open Google Maps URL for active site
   const handleOpenMap = (e) => {

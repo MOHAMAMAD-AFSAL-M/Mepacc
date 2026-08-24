@@ -85,19 +85,29 @@ export const assign = mutation({
 
 export const remove = mutation({
   args: {
-    projectId: v.id("projects"),
-    workerId: v.id("workers"),
+    projectId: v.optional(v.id("projects")),
+    workerId: v.optional(v.id("workers")),
+    assignmentId: v.optional(v.id("projectAssignments")),
   },
   handler: async (ctx, args) => {
-    const assignment = await ctx.db
-      .query("projectAssignments")
-      .withIndex("by_project_and_worker", (q) =>
-        q.eq("projectId", args.projectId).eq("workerId", args.workerId)
-      )
-      .first();
+    if (args.assignmentId) {
+      const existing = await ctx.db.get(args.assignmentId);
+      if (existing) {
+        await ctx.db.delete(args.assignmentId);
+      }
+      return;
+    }
+    if (args.projectId && args.workerId) {
+      const assignments = await ctx.db
+        .query("projectAssignments")
+        .withIndex("by_project_and_worker", (q) =>
+          q.eq("projectId", args.projectId).eq("workerId", args.workerId)
+        )
+        .collect();
 
-    if (!assignment) throw new Error("Worker is not assigned to this project");
-
-    await ctx.db.delete(assignment._id);
+      for (const a of assignments) {
+        await ctx.db.delete(a._id);
+      }
+    }
   },
 });

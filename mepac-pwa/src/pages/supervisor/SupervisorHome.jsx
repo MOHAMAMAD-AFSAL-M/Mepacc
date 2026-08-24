@@ -17,9 +17,10 @@ import {
   RefreshCw,
   ChevronDown
 } from 'lucide-react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex.js';
 import useAuthStore from '../../store/authStore';
-import { getSupervisorProjects, getCurrentJob } from '../../services/jobService';
-import { clockIn, clockOut, getTodayStatus } from '../../services/attendanceService';
+import { clockIn, clockOut } from '../../services/attendanceService';
 import { calculateDistanceMeters, getCurrentPosition } from '../../utils/geoUtils';
 import Card from '../../components/Card';
 import NotificationBellButton from '../../components/NotificationBellButton';
@@ -245,66 +246,77 @@ export default function SupervisorHome() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [refreshLocation]);
 
-  // Fetch supervisor's active projects & clock-in status
-  const loadDashboardData = useCallback(async () => {
-    if (!user?.id) return;
-    setLoadingSites(true);
-    try {
-      const [allProjects, activeJob, status] = await Promise.all([
-        getSupervisorProjects(user.id),
-        getCurrentJob(user.id),
-        getTodayStatus(user.id),
-      ]);
+  // Real-time reactive queries connected to Convex backend
+  const rawSupervisorProjects = useQuery(
+    api.projects.getSupervisorProjects,
+    user?.id ? { workerId: user.id } : 'skip'
+  );
+  const rawActiveJob = useQuery(
+    api.projects.getActiveJobForWorker,
+    user?.id ? { workerId: user.id } : 'skip'
+  );
+  const rawTodayStatus = useQuery(
+    api.attendance.getTodayStatus,
+    user?.id ? { workerId: user.id } : 'skip'
+  );
 
-      let formattedSites = [];
-      if (allProjects && Array.isArray(allProjects)) {
-        formattedSites = allProjects
-          .filter((p) => !p.isCompleted)
-          .map((p) => ({
-            id: p.id,
-            name: p.name,
-            client: p.client,
-            location: p.location,
-            latitude: p.latitude,
-            longitude: p.longitude,
-            visited: Boolean(p.isVisitedByMe || p.isVisitedToday),
-            isVisitedByMe: Boolean(p.isVisitedByMe),
-            isVisitedToday: Boolean(p.isVisitedToday),
-            visitedAtTimeStr: p.visitedAtTimeStr || null,
-            visitedBySupervisorName: p.visitedBySupervisorName || null,
-            presentCount: p.presentCount || 0,
-            totalAssigned: p.totalAssigned || 0,
-            isAssignedToMe: Boolean(p.isAssignedToMe),
-          }));
-        setActiveSites(formattedSites);
-        if (formattedSites.length > 0 && !selectedSiteId) {
+  // Sync active supervisor sites whenever assignments or projects change
+  useEffect(() => {
+    if (rawSupervisorProjects === undefined) return;
+    setLoadingSites(false);
+
+    let formattedSites = [];
+    if (Array.isArray(rawSupervisorProjects)) {
+      formattedSites = rawSupervisorProjects
+        .filter((p) => !p.isCompleted)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          client: p.client,
+          location: p.location,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          visited: Boolean(p.isVisitedByMe || p.isVisitedToday),
+          isVisitedByMe: Boolean(p.isVisitedByMe),
+          isVisitedToday: Boolean(p.isVisitedToday),
+          visitedAtTimeStr: p.visitedAtTimeStr || null,
+          visitedBySupervisorName: p.visitedBySupervisorName || null,
+          presentCount: p.presentCount || 0,
+          totalAssigned: p.totalAssigned || 0,
+          isAssignedToMe: Boolean(p.isAssignedToMe),
+          enforceGps: p.enforceGps,
+          geofenceRadius: p.geofenceRadius,
+          allowSelfClockIn: p.allowSelfClockIn,
+        }));
+      setActiveSites(formattedSites);
+
+      if (formattedSites.length > 0) {
+        if (!selectedSiteIdRef.current || !formattedSites.some(s => s.id === selectedSiteIdRef.current)) {
           setSelectedSiteId(formattedSites[0].id);
         }
-      } else {
-        setActiveSites([]);
-      }
-
-      setCurrentJob(activeJob);
-
-      if (status) {
-        setIsClockedIn(Boolean(status.isClockedIn));
-        setTodayCheckIn(status.checkIn || null);
-      }
-
-      // Check GPS after loading sites
-      if (formattedSites.length > 0) {
         refreshLocation(formattedSites);
+      } else {
+        setSelectedSiteId(null);
       }
-    } catch (err) {
-      console.warn('Failed to load supervisor dashboard data:', err);
-    } finally {
-      setLoadingSites(false);
+    } else {
+      setActiveSites([]);
+      setSelectedSiteId(null);
     }
-  }, [user, refreshLocation, selectedSiteId]);
+  }, [rawSupervisorProjects, refreshLocation]);
+
+  // Sync active job and clock-in status
+  useEffect(() => {
+    if (rawActiveJob !== undefined) {
+      setCurrentJob(rawActiveJob);
+    }
+  }, [rawActiveJob]);
 
   useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
+    if (rawTodayStatus !== undefined && rawTodayStatus !== null) {
+      setIsClockedIn(Boolean(rawTodayStatus.isClockedIn));
+      setTodayCheckIn(rawTodayStatus.checkIn || null);
+    }
+  }, [rawTodayStatus]);
 
   // Open Google Maps URL for a site
   const handleOpenMap = (e, site) => {
