@@ -82,6 +82,7 @@ export default function AddWorkerModal({ onClose }) {
                         <option value="Supervisor">Supervisor</option>
                         <option value="Foreman">Foreman</option>
                         <option value="Technician">Technician</option>
+                        <option value="Designer">Designer</option>
                     </select>
                 </div>
                 <div className="form-group">

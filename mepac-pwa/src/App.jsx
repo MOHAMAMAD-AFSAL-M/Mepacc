@@ -5,6 +5,7 @@ import ProtectedRoute from './routes/ProtectedRoute';
 import TechnicianLayout from './layouts/TechnicianLayout';
 import ForemanLayout from './layouts/ForemanLayout';
 import SupervisorLayout from './layouts/SupervisorLayout';
+import DesignerLayout from './layouts/DesignerLayout';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -27,6 +28,10 @@ import SupervisorRfis from './pages/supervisor/SupervisorRfis';
 import SupervisorAccount from './pages/supervisor/SupervisorAccount';
 import SupervisorProfile from './pages/supervisor/SupervisorProfile';
 import SupervisorChangePin from './pages/supervisor/SupervisorChangePin';
+import DesignerProjects from './pages/designer/DesignerProjects';
+import DesignerProjectDrawings from './pages/designer/DesignerProjectDrawings';
+import DesignerAccount from './pages/designer/DesignerAccount';
+import DesignerChangePin from './pages/designer/DesignerChangePin';
 
 /**
  * App — top-level route configuration.
@@ -101,6 +106,23 @@ export default function App() {
           <Route path="account" element={<SupervisorAccount />} />
           <Route path="profile" element={<SupervisorProfile />} />
           <Route path="change-pin" element={<SupervisorChangePin />} />
+        </Route>
+
+        {/* Designer routes */}
+        <Route
+          path="/designer"
+          element={
+            <ProtectedRoute role="designer">
+              <DesignerLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="home" replace />} />
+          <Route path="home" element={<DesignerProjects />} />
+          <Route path="projects" element={<DesignerProjects />} />
+          <Route path="projects/:projectId" element={<DesignerProjectDrawings />} />
+          <Route path="account" element={<DesignerAccount />} />
+          <Route path="change-pin" element={<DesignerChangePin />} />
         </Route>
 
         {/* Catch-all: redirect to login */}

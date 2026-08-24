@@ -13,7 +13,8 @@ export default defineSchema({
     role: v.union(
       v.literal("Supervisor"),
       v.literal("Foreman"),
-      v.literal("Technician")
+      v.literal("Technician"),
+      v.literal("Designer")
     ),
     mobile: v.string(), // Used only for workerLogin lookup; never returned to frontend
     adminPin: v.optional(v.string()), // Set by admin; shown in admin panel for reset reference
@@ -74,15 +75,23 @@ export default defineSchema({
     name: v.string(),
     currentVersion: v.number(),
     pinnedAt: v.optional(v.number()),
+    category: v.optional(v.string()), // e.g. "Electrical", "Plumbing", "HVAC", "Fire Protection", "Architectural", "Other"
+    discipline: v.optional(v.string()),
+    description: v.optional(v.string()),
   }).index("by_project", ["projectId"]),
 
-  // ── Blueprint Revisions (version history) ─────────────────────
+  // ── Blueprint Revisions (version history — max 3 retained FIFO) ─
   blueprintRevisions: defineTable({
     blueprintId: v.id("blueprints"),
     version: v.number(),
     fileStorageId: v.id("_storage"),
     uploadedAt: v.number(),
     uploadedBy: v.optional(v.string()),
+    uploadedByRole: v.optional(v.string()),
+    workerId: v.optional(v.id("workers")),
+    notes: v.optional(v.string()), // Revision comment explaining what is included/changed
+    fileName: v.optional(v.string()),
+    fileSize: v.optional(v.string()),
   })
     .index("by_blueprint", ["blueprintId"])
     .index("by_blueprint_and_version", ["blueprintId", "version"]),

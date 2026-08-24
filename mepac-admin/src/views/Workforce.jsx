@@ -42,12 +42,14 @@ export default function Workforce({ openModal, workforce = [], projects = [] }) 
     const supervisors = workforce.filter(w => w.role === 'Supervisor');
     const foremen = workforce.filter(w => w.role === 'Foreman');
     const technicians = workforce.filter(w => w.role === 'Technician');
+    const designers = workforce.filter(w => w.role === 'Designer');
 
     const getTabWorkers = () => {
         switch (activeTab) {
             case 'Supervisor': return supervisors;
             case 'Foreman': return foremen;
             case 'Technician': return technicians;
+            case 'Designer': return designers;
             default: return [];
         }
     };
@@ -327,6 +329,22 @@ export default function Workforce({ openModal, workforce = [], projects = [] }) 
                         color: activeTab === 'Technician' ? 'var(--accent-blue)' : 'var(--text-muted)'
                     }}>
                         {technicians.length}
+                    </span>
+                </button>
+                <button 
+                    className={`settings-top-tab-btn ${activeTab === 'Designer' ? 'active' : ''}`}
+                    onClick={() => { setActiveTab('Designer'); setOpenMenuWorkerId(null); }}
+                >
+                    Designers
+                    <span style={{
+                        marginLeft: '8px',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontSize: '12px',
+                        backgroundColor: activeTab === 'Designer' ? 'var(--accent-blue-bg)' : 'var(--bg-surface-hover)',
+                        color: activeTab === 'Designer' ? 'var(--accent-blue)' : 'var(--text-muted)'
+                    }}>
+                        {designers.length}
                     </span>
                 </button>
             </div>

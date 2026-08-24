@@ -80,7 +80,8 @@ export const create = mutation({
     role: v.union(
       v.literal("Supervisor"),
       v.literal("Foreman"),
-      v.literal("Technician")
+      v.literal("Technician"),
+      v.literal("Designer")
     ),
     mobile: v.string(),
     adminPin: v.string(),
@@ -103,7 +104,14 @@ export const create = mutation({
     if (!workerCode) {
       const existing = await ctx.db.query("workers").collect();
       const count = existing.filter((w) => w.role === args.role).length;
-      const prefix = args.role === "Supervisor" ? "SUP" : args.role === "Foreman" ? "FOR" : "TEC";
+      const prefix =
+        args.role === "Supervisor"
+          ? "SUP"
+          : args.role === "Foreman"
+          ? "FOR"
+          : args.role === "Designer"
+          ? "DES"
+          : "TEC";
       workerCode = `${prefix}-${String(count + 1).padStart(3, "0")}`;
     }
 
@@ -130,7 +138,8 @@ export const update = mutation({
       v.union(
         v.literal("Supervisor"),
         v.literal("Foreman"),
-        v.literal("Technician")
+        v.literal("Technician"),
+        v.literal("Designer")
       )
     ),
     mobile: v.optional(v.string()),
@@ -268,6 +277,8 @@ export const loginWithPin = mutation({
         ? "Administration"
         : worker.role === "Foreman"
         ? "Operations"
+        : worker.role === "Designer"
+        ? "Engineering & Design"
         : "HVAC";
 
     return {

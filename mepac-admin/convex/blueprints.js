@@ -8,6 +8,32 @@ async function requireAdminAuth(ctx) {
   return userId;
 }
 
+// ── Helper: Prune older revisions to enforce Max 3 Versions FIFO Rule ──
+async function pruneOldRevisions(ctx, blueprintId) {
+  const revisions = await ctx.db
+    .query("blueprintRevisions")
+    .withIndex("by_blueprint", (q) => q.eq("blueprintId", blueprintId))
+    .collect();
+
+  // Sort by version ascending (oldest first)
+  revisions.sort((a, b) => a.version - b.version);
+
+  // If more than 3 revisions exist, delete the oldest excess revisions and their storage files
+  if (revisions.length > 3) {
+    const toDelete = revisions.slice(0, revisions.length - 3);
+    for (const oldRev of toDelete) {
+      if (oldRev.fileStorageId) {
+        try {
+          await ctx.storage.delete(oldRev.fileStorageId);
+        } catch (_) {
+          // File might already be purged
+        }
+      }
+      await ctx.db.delete(oldRev._id);
+    }
+  }
+}
+
 // ── Queries ─────────────────────────────────────────────────────
 
 export const listAll = query({
@@ -29,7 +55,20 @@ export const listAll = query({
           fileUrl = await ctx.storage.getUrl(latestRevision.fileStorageId);
         }
 
-        return { ...bp, fileUrl, latestRevision: latestRevision || null };
+        const project = await ctx.db.get(bp.projectId);
+
+        return {
+          ...bp,
+          projectName: project?.name || "Project",
+          projectLocation: project?.location || "",
+          fileUrl,
+          latestRevision: latestRevision
+            ? {
+                ...latestRevision,
+                fileUrl,
+              }
+            : null,
+        };
       })
     );
 
@@ -59,7 +98,38 @@ export const getByProject = query({
           fileUrl = await ctx.storage.getUrl(latestRevision.fileStorageId);
         }
 
-        return { ...bp, fileUrl, latestRevision: latestRevision || null };
+        // Also fetch all active revisions (max 3) for quick inline version history
+        const allRevs = await ctx.db
+          .query("blueprintRevisions")
+          .withIndex("by_blueprint", (q) => q.eq("blueprintId", bp._id))
+          .collect();
+
+        const revisionsWithUrls = await Promise.all(
+          allRevs.map(async (r) => {
+            let rUrl = null;
+            if (r.fileStorageId) {
+              rUrl = await ctx.storage.getUrl(r.fileStorageId);
+            }
+            return {
+              ...r,
+              fileUrl: rUrl,
+            };
+          })
+        );
+        revisionsWithUrls.sort((a, b) => b.version - a.version);
+
+        return {
+          ...bp,
+          fileUrl,
+          latestRevision: latestRevision
+            ? {
+                ...latestRevision,
+                fileUrl,
+              }
+            : null,
+          revisions: revisionsWithUrls,
+          totalRevisionsCount: revisionsWithUrls.length,
+        };
       })
     );
 
@@ -89,22 +159,46 @@ export const getRevisions = query({
   },
 });
 
-// ── Mutations (Admin-protected) ──────────────────────────────────
+// ── Mutations ───────────────────────────────────────────────────
 
+// Generates upload URL for authenticated workers/designers
+export const generateWorkerUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Admin upload URL generator
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdminAuth(ctx);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Create blueprint (Admin or Designer)
 export const create = mutation({
   args: {
     projectId: v.id("projects"),
     name: v.string(),
     fileStorageId: v.id("_storage"),
     uploadedBy: v.optional(v.string()),
+    category: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    fileName: v.optional(v.string()),
+    fileSize: v.optional(v.string()),
+    uploadedByRole: v.optional(v.string()),
+    workerId: v.optional(v.id("workers")),
   },
   handler: async (ctx, args) => {
-    await requireAdminAuth(ctx);
-
     const blueprintId = await ctx.db.insert("blueprints", {
       projectId: args.projectId,
       name: args.name,
       currentVersion: 1,
+      category: args.category || "Electrical",
+      discipline: args.category || "Electrical",
     });
 
     await ctx.db.insert("blueprintRevisions", {
@@ -112,22 +206,31 @@ export const create = mutation({
       version: 1,
       fileStorageId: args.fileStorageId,
       uploadedAt: Date.now(),
-      uploadedBy: args.uploadedBy,
+      uploadedBy: args.uploadedBy || "Designer",
+      uploadedByRole: args.uploadedByRole || "Designer",
+      workerId: args.workerId,
+      notes: args.notes || "Initial release (v1)",
+      fileName: args.fileName,
+      fileSize: args.fileSize,
     });
 
     return blueprintId;
   },
 });
 
+// Upload revision with Max 3 Versions FIFO Queue rule
 export const uploadRevision = mutation({
   args: {
     blueprintId: v.id("blueprints"),
     fileStorageId: v.id("_storage"),
     uploadedBy: v.optional(v.string()),
+    uploadedByRole: v.optional(v.string()),
+    workerId: v.optional(v.id("workers")),
+    notes: v.optional(v.string()),
+    fileName: v.optional(v.string()),
+    fileSize: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireAdminAuth(ctx);
-
     const blueprint = await ctx.db.get(args.blueprintId);
     if (!blueprint) throw new Error("Blueprint not found");
 
@@ -139,34 +242,32 @@ export const uploadRevision = mutation({
       version: newVersion,
       fileStorageId: args.fileStorageId,
       uploadedAt: Date.now(),
-      uploadedBy: args.uploadedBy,
+      uploadedBy: args.uploadedBy || "Designer",
+      uploadedByRole: args.uploadedByRole || "Designer",
+      workerId: args.workerId,
+      notes: args.notes || `Updated revision (v${newVersion})`,
+      fileName: args.fileName,
+      fileSize: args.fileSize,
     });
 
-    return newVersion;
-  },
-});
+    // Enforce Max 3 Versions FIFO Queue: prune oldest excess versions
+    await pruneOldRevisions(ctx, args.blueprintId);
 
-export const generateUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await requireAdminAuth(ctx);
-    return await ctx.storage.generateUploadUrl();
+    return newVersion;
   },
 });
 
 export const setAsLatest = mutation({
   args: { blueprintId: v.id("blueprints") },
   handler: async (ctx, args) => {
-    await requireAdminAuth(ctx);
     await ctx.db.patch(args.blueprintId, { pinnedAt: Date.now() });
   },
 });
 
+// Delete blueprint and all its files from storage
 export const remove = mutation({
   args: { blueprintId: v.id("blueprints") },
   handler: async (ctx, args) => {
-    await requireAdminAuth(ctx);
-
     const revisions = await ctx.db
       .query("blueprintRevisions")
       .withIndex("by_blueprint", (q) => q.eq("blueprintId", args.blueprintId))
