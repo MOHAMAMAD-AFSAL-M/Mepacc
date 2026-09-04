@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react';
 import ProtectedRoute from './routes/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Layouts
 import TechnicianLayout from './layouts/TechnicianLayout';
@@ -34,23 +35,12 @@ import DesignerAccount from './pages/designer/DesignerAccount';
 import DesignerProfile from './pages/designer/DesignerProfile';
 import DesignerChangePin from './pages/designer/DesignerChangePin';
 
-/**
- * App — top-level route configuration.
- *
- * Route structure:
- *   /login              → public login page
- *   /technician/*       → ProtectedRoute(role=technician) → TechnicianLayout
- *   /foreman/*          → ProtectedRoute(role=foreman)    → ForemanLayout
- *   /supervisor/*       → ProtectedRoute(role=supervisor) → SupervisorLayout
- *   /designer/*         → ProtectedRoute(role=designer)   → DesignerLayout
- *   /                   → redirect to /login
- */
 import SessionEnforcerModal from './components/SessionEnforcerModal';
 import PushNotificationListener from './components/PushNotificationListener';
 
 export default function App() {
   return (
-    <>
+    <ErrorBoundary>
       <SessionEnforcerModal />
       <PushNotificationListener />
       <Routes>
@@ -133,7 +123,6 @@ export default function App() {
         {/* Catch-all: redirect to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </>
+    </ErrorBoundary>
   );
 }
-

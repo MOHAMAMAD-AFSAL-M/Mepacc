@@ -256,7 +256,7 @@ export default function SupervisorHome() {
     user?.id ? { workerId: user.id } : 'skip'
   );
   const rawTodayStatus = useQuery(
-    api.attendance.getTodayStatus,
+    api.checkIns.getTodayStatus,
     user?.id ? { workerId: user.id } : 'skip'
   );
 
