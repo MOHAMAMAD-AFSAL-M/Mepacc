@@ -37,3 +37,24 @@ export async function login(phone, pin) {
 export async function logout() {
   await new Promise((resolve) => setTimeout(resolve, 200));
 }
+
+/**
+ * Simulate setting an initial PIN for a new user on first login.
+ * @param {string} userId – user ID
+ * @param {string} newPin – new 6-digit PIN
+ * @returns {Promise<{ user: object }>}
+ */
+export async function setInitialPin(userId, newPin) {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  const user = mockUsers.find((u) => u.id === userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  user.pin = newPin;
+  user.isFirstLogin = false;
+
+  const { pin: _, ...safeUser } = user;
+  return { user: safeUser };
+}

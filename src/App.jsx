@@ -8,6 +8,7 @@ import SupervisorLayout from './layouts/SupervisorLayout';
 
 // Pages
 import LoginPage from './pages/LoginPage';
+import PinSetup from './pages/PinSetup';
 import TechnicianHome from './pages/technician/TechnicianHome';
 import TechnicianCalendar from './pages/technician/TechnicianCalendar';
 import TechnicianAccount from './pages/technician/TechnicianAccount';
@@ -41,6 +42,9 @@ export default function App() {
     <Routes>
       {/* Public route */}
       <Route path="/login" element={<LoginPage />} />
+      
+      {/* First-time PIN Setup route */}
+      <Route path="/setup-pin" element={<PinSetup />} />
 
       {/* Technician routes */}
       <Route

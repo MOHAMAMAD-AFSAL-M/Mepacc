@@ -15,6 +15,7 @@ export const mockUsers = [
     email: null,
     department: 'HVAC',
     status: 'active',
+    isFirstLogin: true,
   },
   {
     id: 'usr_frm_01',
@@ -26,6 +27,7 @@ export const mockUsers = [
     email: null,
     department: 'Operations',
     status: 'active',
+    isFirstLogin: true,
   },
   {
     id: 'usr_sup_01',
@@ -37,6 +39,7 @@ export const mockUsers = [
     email: null,
     department: 'Administration',
     status: 'active',
+    isFirstLogin: true,
   },
 ];
 
@@ -46,7 +49,7 @@ export const mockJobs = [
     id: 'job_01',
     name: 'Patel Villa',
     location: 'Kochi, Kerala',
-    imageUrl: 'https://images.unsplash.com/photo-1541888081636-67a550d5145b?auto=format&fit=crop&q=80&w=800',
+    imageUrl: 'https://media.istockphoto.com/id/1469656864/photo/electrician-engineer-uses-a-multimeter-to-test-the-electrical-installation-and-power-line.jpg?s=612x612&w=0&k=20&c=h70UOpNbJYT5G2oGT-KUeIE3yXwEgsCpr25yR1rnGtU=',
     dateStr: 'Mon, 12 Jul',
     timeStr: '08:00 AM',
     status: 'At Location',

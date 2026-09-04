@@ -24,8 +24,12 @@ export default function LoginPage() {
     e.preventDefault();
     clearError();
     try {
-      const role = await login(phone, pin);
-      navigate(`/${role}/home`, { replace: true });
+      const { user, role } = await login(phone, pin);
+      if (user.isFirstLogin) {
+        navigate('/setup-pin', { replace: true });
+      } else {
+        navigate(`/${role}/home`, { replace: true });
+      }
     } catch {
       // error is already set in the store
     }
@@ -124,10 +128,12 @@ export default function LoginPage() {
         </form>
 
         {/* Dev hint */}
-        <p className="text-center text-text-muted text-xs mt-4">
-          Dev: use <span className="font-mono">9876543210</span> / PIN{' '}
-          <span className="font-mono">123456</span>
-        </p>
+        <div className="text-center text-text-muted text-xs mt-4 space-y-0.5">
+          <p>Dev logins (PIN: <span className="font-mono">123456</span>):</p>
+          <p className="font-mono text-[11px]">
+            Tech: 9876543210 | Foreman: 9876543211 | Sup: 9876543212
+          </p>
+        </div>
       </div>
     </div>
   );

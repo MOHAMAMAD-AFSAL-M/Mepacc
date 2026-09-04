@@ -36,7 +36,7 @@ const useAuthStore = create((set) => ({
         isLoading: false,
         error: null,
       });
-      return role; // caller can use this to navigate
+      return { user, role }; // caller can use this to navigate
     } catch (err) {
       set({
         user: null,
@@ -59,6 +59,20 @@ const useAuthStore = create((set) => ({
       isLoading: false,
       error: null,
     });
+  },
+
+  setInitialPin: async (newPin) => {
+    set({ isLoading: true, error: null });
+    try {
+      const currentUser = useAuthStore.getState().user;
+      if (!currentUser) throw new Error('No active user session');
+      const { user } = await authService.setInitialPin(currentUser.id, newPin);
+      set({ user, isLoading: false, error: null });
+      return user;
+    } catch (err) {
+      set({ isLoading: false, error: err.message });
+      throw err;
+    }
   },
 
   clearError: () => set({ error: null }),
