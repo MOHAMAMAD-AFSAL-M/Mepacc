@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './routes/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 
