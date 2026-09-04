@@ -6,6 +6,7 @@ import { getAttendanceForMonth } from '../../services/attendanceService';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Select from '../../components/Select';
+import NotificationBellButton from '../../components/NotificationBellButton';
 
 /**
  * SupervisorAccount — Account & Settings page for Supervisors.
@@ -95,9 +96,7 @@ export default function SupervisorAccount() {
         <h1 className="text-2xl font-semibold font-heading text-text-primary tracking-tight">
           Account
         </h1>
-        <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40">
-          <Bell size={20} className="text-text-primary" />
-        </button>
+        <NotificationBellButton />
       </header>
 
       {/* ── Main Content ────────────────────────────────────── */}

@@ -4,6 +4,7 @@ import useAuthStore from '../../store/authStore';
 import { getAttendanceForMonth } from '../../services/attendanceService';
 import Card from '../../components/Card';
 import Select from '../../components/Select';
+import NotificationBellButton from '../../components/NotificationBellButton';
 
 /**
  * ForemanCalendar — attendance & calendar overview for foremen.
@@ -86,9 +87,7 @@ export default function ForemanCalendar() {
           </h1>
           <p className="text-sm text-text-secondary">Foreman</p>
         </div>
-        <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40">
-          <Bell size={20} className="text-text-primary" />
-        </button>
+        <NotificationBellButton />
       </header>
 
       {/* Main Content */}

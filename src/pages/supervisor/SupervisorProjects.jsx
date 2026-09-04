@@ -1,52 +1,65 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ChevronRight, ArrowUpDown, Check, CheckCircle2, Circle } from 'lucide-react';
+import { Bell, ChevronRight, ArrowUpDown, Check, CheckCircle2, Circle, MapPin, ExternalLink } from 'lucide-react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex.js';
+import useAuthStore from '../../store/authStore';
 import Card from '../../components/Card';
-
-/**
- * SupervisorProjects — Projects List page for Supervisor.
- * Matches Stitch screen "Supervisor Projects List - Management by Exception" (screen ID: 83c508b3cd4d4a6b8a7f8a5a4bdf7e36).
- *
- * Features:
- *   1. Top App Bar with "Projects" title & Notification bell
- *   2. "Current Working" projects section with interactive Sort dropdown (Alphabetically, Visited / Not Visited)
- *   3. "Old Projects" section with past/completed project list
- *   4. Project Card navigation to Project Details dashboard
- */
-
-const INITIAL_CURRENT_PROJECTS = [
-  {
-    id: 'job_01',
-    name: 'M M TOWER',
-    phase: 'Foundation',
-    visited: true,
-  },
-  {
-    id: 'job_02',
-    name: 'Sharma Complex',
-    phase: 'MEP Rough-in',
-    visited: false,
-  },
-  {
-    id: 'job_03',
-    name: 'Patel Villa',
-    phase: 'Finishing',
-    visited: false,
-  },
-];
-
-const OLD_PROJECTS = [
-  { id: 'old_01', name: 'City Mall', phase: 'Completed' },
-  { id: 'old_02', name: 'Sunrise Apartments', phase: 'Completed' },
-];
+import NotificationBellButton from '../../components/NotificationBellButton';
+import { getProjectGradient } from '../../utils/colors';
 
 export default function SupervisorProjects() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
 
-  const [currentProjects, setCurrentProjects] = useState(INITIAL_CURRENT_PROJECTS);
   const [sortOption, setSortOption] = useState('alphabetical'); // 'alphabetical' | 'visited'
   const [isSortOpen, setIsSortOpen] = useState(false);
   const sortRef = useRef(null);
+
+  // Real-time reactive query for supervisor projects
+  const rawProjects = useQuery(
+    api.projects.getSupervisorProjects,
+    user?.id ? { workerId: user.id } : {}
+  );
+
+  const { currentProjects, oldProjects } = useMemo(() => {
+    const active = [];
+    const completed = [];
+
+    if (rawProjects && Array.isArray(rawProjects)) {
+      rawProjects.forEach((p) => {
+        const item = {
+          id: p.id || p._id,
+          name: p.name,
+          client: p.client,
+          phase: p.location || 'Active MEP',
+          location: p.location,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          visited: Boolean(p.isVisitedByMe || p.isVisitedToday),
+          isVisitedByMe: Boolean(p.isVisitedByMe),
+          isVisitedToday: Boolean(p.isVisitedToday),
+          visitedAtTimeStr: p.visitedAtTimeStr || null,
+          visitedBySupervisorName: p.visitedBySupervisorName || null,
+          isAssignedToMe: Boolean(p.isAssignedToMe),
+        };
+
+        if (p.isCompleted) {
+          completed.push({ ...item, phase: 'Completed' });
+        } else {
+          active.push(item);
+        }
+      });
+    }
+
+    if (sortOption === 'alphabetical') {
+      active.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortOption === 'visited') {
+      active.sort((a, b) => (b.visited ? 1 : 0) - (a.visited ? 1 : 0));
+    }
+
+    return { currentProjects: active, oldProjects: completed };
+  }, [rawProjects, sortOption]);
 
   // Close sort dropdown when clicking outside
   useEffect(() => {
@@ -62,14 +75,6 @@ export default function SupervisorProjects() {
   const handleSortChange = (option) => {
     setSortOption(option);
     setIsSortOpen(false);
-
-    const sorted = [...currentProjects];
-    if (option === 'alphabetical') {
-      sorted.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (option === 'visited') {
-      sorted.sort((a, b) => (b.visited ? 1 : 0) - (a.visited ? 1 : 0));
-    }
-    setCurrentProjects(sorted);
   };
 
   return (
@@ -79,9 +84,7 @@ export default function SupervisorProjects() {
         <h1 className="text-xl font-bold font-heading text-text-primary">
           Projects
         </h1>
-        <button className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40">
-          <Bell size={20} className="text-text-secondary" />
-        </button>
+        <NotificationBellButton />
       </header>
 
       {/* ── Main Content ────────────────────────────────────── */}
@@ -138,62 +141,145 @@ export default function SupervisorProjects() {
 
           {/* Active Projects Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {currentProjects.map((project) => (
-              <Card
-                key={project.id}
-                padding="none"
-                onClick={() => navigate(`/supervisor/projects/${project.id}`)}
-                className="p-4 border border-border shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center justify-between group"
-              >
-                <div className="flex flex-col gap-1">
-                  <h3 className="text-lg font-bold font-heading text-text-primary">
-                    {project.name}
-                  </h3>
-                  <span className="text-xs text-text-secondary">
-                    Active Phase: {project.phase}
-                  </span>
+            {currentProjects.length > 0 ? (
+              currentProjects.map((project) => {
+                const mapsUrl = project.latitude != null && project.longitude != null
+                  ? `https://www.google.com/maps/search/?api=1&query=${project.latitude},${project.longitude}`
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(project.location || project.name)}`;
 
-                  {project.visited ? (
-                    <div className="flex items-center gap-1 text-success mt-1">
-                      <CheckCircle2 size={14} strokeWidth={2.5} />
-                      <span className="text-[11px] font-semibold">Visited</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-text-muted mt-1">
-                      <Circle size={14} strokeWidth={1.5} />
-                      <span className="text-[11px] font-semibold">Not Visited</span>
-                    </div>
-                  )}
-                </div>
+                return (
+                  <Card
+                    key={project.id}
+                    padding="none"
+                    onClick={() => navigate(`/supervisor/projects/${project.id}`)}
+                    className="border border-border shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col group relative overflow-hidden rounded-lg bg-surface-card"
+                  >
+                    {/* Top Gradient / Image Banner matching Admin Console */}
+                    <div
+                      className="h-32 w-full relative overflow-hidden flex items-start justify-between p-3"
+                      style={{
+                        background: getProjectGradient(project.id),
+                      }}
+                    >
+                      {project.imageUrl && (
+                        <img
+                          src={project.imageUrl}
+                          alt={project.name}
+                          className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-40 group-hover:scale-105 transition-transform duration-300"
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
 
-                <ChevronRight
-                  size={20}
-                  className="text-text-muted group-hover:text-primary transition-colors shrink-0"
-                />
-              </Card>
-            ))}
+                      {/* Supervisor Visit Overlay Pill (Matching Admin Console) */}
+                      <div className="relative z-10">
+                        {project.visited ? (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-600/90 text-white text-[11px] font-bold shadow-md backdrop-blur-xs">
+                            <CheckCircle2 size={12} strokeWidth={2.5} />
+                            <span>Visited {project.visitedAtTimeStr ? `at ${project.visitedAtTimeStr}` : 'Today'}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/90 text-white text-[11px] font-bold shadow-md backdrop-blur-xs">
+                            <Circle size={10} strokeWidth={2.5} />
+                            <span>No Visit Today</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {project.isAssignedToMe && (
+                        <span className="relative z-10 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white backdrop-blur-md border border-white/30">
+                          Assigned
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="p-3.5 flex items-center justify-between gap-2">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <h3 className="text-base font-bold font-heading text-text-primary group-hover:text-primary transition-colors truncate">
+                          {project.name}
+                        </h3>
+
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-primary transition-colors font-medium truncate"
+                        >
+                          <MapPin size={12} className="text-primary shrink-0" />
+                          <span className="truncate">{project.location}</span>
+                          <ExternalLink size={10} className="shrink-0 opacity-70" />
+                        </a>
+                      </div>
+
+                      <ChevronRight
+                        size={18}
+                        className="text-text-muted group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0"
+                      />
+                    </div>
+                  </Card>
+                );
+              })
+            ) : (
+              <div className="p-4 text-sm text-text-muted text-center col-span-full border border-border rounded-sm">
+                No active projects found.
+              </div>
+            )}
           </div>
         </div>
 
         {/* ── Section 2: Old Projects ─────────────────────────── */}
         <div className="flex flex-col gap-3 mt-2">
-          <h2 className="text-base font-bold font-heading text-text-secondary">
-            Old Projects
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold font-heading text-text-secondary">
+              Old Projects
+            </h2>
+            <span className="text-xs font-semibold text-text-muted">
+              {oldProjects.length} COMPLETED
+            </span>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {OLD_PROJECTS.map((project) => (
-              <Card
-                key={project.id}
-                padding="none"
-                className="p-4 border border-border bg-slate-50 opacity-80 flex items-center justify-between cursor-pointer hover:opacity-100 transition-opacity"
-              >
-                <h3 className="text-base font-medium font-heading text-text-secondary">
-                  {project.name}
-                </h3>
-                <ChevronRight size={18} className="text-text-muted" />
-              </Card>
-            ))}
+            {oldProjects.length > 0 ? (
+              oldProjects.map((project) => {
+                const mapsUrl = project.latitude != null && project.longitude != null
+                  ? `https://www.google.com/maps/search/?api=1&query=${project.latitude},${project.longitude}`
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(project.location || project.name)}`;
+
+                return (
+                  <Card
+                    key={project.id}
+                    padding="none"
+                    onClick={() => navigate(`/supervisor/projects/${project.id}`)}
+                    className="p-4 border border-border bg-slate-50/70 hover:bg-surface-card flex items-center justify-between cursor-pointer hover:shadow-md transition-all group"
+                  >
+                    <div className="flex flex-col gap-1 min-w-0 pr-2">
+                      <h3 className="text-base font-medium font-heading text-text-primary group-hover:text-primary transition-colors">
+                        {project.name}
+                      </h3>
+                      {project.location && (
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors font-medium truncate"
+                        >
+                          <MapPin size={12} />
+                          <span className="truncate">{project.location}</span>
+                          <ExternalLink size={10} />
+                        </a>
+                      )}
+                    </div>
+                    <ChevronRight size={18} className="text-text-muted group-hover:text-primary transition-colors shrink-0" />
+                  </Card>
+                );
+              })
+            ) : (
+              <div className="p-4 text-sm text-text-muted text-center col-span-full border border-border rounded-sm bg-surface-card">
+                No completed projects.
+              </div>
+            )}
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import useAuthStore from '../../store/authStore';
 import { getAttendanceForMonth } from '../../services/attendanceService';
 import Card from '../../components/Card';
 import Select from '../../components/Select';
+import NotificationBellButton from '../../components/NotificationBellButton';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -77,9 +78,7 @@ export default function TechnicianCalendar() {
           </h1>
           <p className="text-base text-text-secondary">Technician</p>
         </div>
-        <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40">
-          <Bell size={20} className="text-text-primary" />
-        </button>
+        <NotificationBellButton />
       </header>
 
       {/* Main Content */}

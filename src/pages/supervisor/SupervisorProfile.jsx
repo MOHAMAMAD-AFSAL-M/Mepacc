@@ -95,7 +95,7 @@ export default function SupervisorProfile() {
             <Input
               label="Mobile"
               id="profile-mobile"
-              value={user?.phone || '9876543212'}
+              value={user?.mobile || user?.phone || ''}
               readOnly
               className="opacity-70"
             />

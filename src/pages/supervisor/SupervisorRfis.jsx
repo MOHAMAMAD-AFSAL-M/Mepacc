@@ -18,9 +18,15 @@ import {
   Sparkles,
   Check,
 } from 'lucide-react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex.js';
 import Card from '../../components/Card';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
+import NotificationBellButton from '../../components/NotificationBellButton';
+import useAuthStore from '../../store/authStore';
+import { getSupervisorProjects } from '../../services/jobService';
+
 
 /**
  * SupervisorRfis — RFI & Disputes Hub.
@@ -30,13 +36,6 @@ import Button from '../../components/Button';
  *   - Clean option list with hover & selection feedback
  */
 
-const PROJECT_OPTIONS = [
-  'All Projects',
-  'Patel Villa',
-  'Sharma Complex',
-  'M M TOWER',
-];
-
 const STATUS_OPTIONS = [
   { label: 'Status (All)', value: 'All Statuses' },
   { label: 'In Progress', value: 'IN PROGRESS' },
@@ -44,8 +43,6 @@ const STATUS_OPTIONS = [
   { label: 'Flagged Review', value: 'FLAGGED FOR ADMIN REVIEW' },
   { label: 'Resolved', value: 'RESOLVED' },
 ];
-
-const MODAL_PROJECT_OPTIONS = ['Patel Villa', 'Sharma Complex', 'M M TOWER'];
 
 const MODAL_PRIORITY_OPTIONS = [
   'High Priority',
@@ -207,8 +204,16 @@ const QUICK_CHIPS = [
 ];
 
 export default function SupervisorRfis() {
+  const user = useAuthStore((s) => s.user);
+  const convexRfis = useQuery(api.rfis.list) || [];
+  const createRfiMutation = useMutation(api.rfis.createRfi);
+
   const [items, setItems] = useState(INITIAL_ITEMS);
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'rfis' | 'disputes'
+
+  // Dynamic project options
+  const [projectOptions, setProjectOptions] = useState(['All Projects']);
+  const [modalProjectOptions, setModalProjectOptions] = useState([]);
 
   // Filter Dropdown Open States
   const [selectedProject, setSelectedProject] = useState('All Projects');
@@ -220,7 +225,7 @@ export default function SupervisorRfis() {
   // Modal Dropdown Open States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newProject, setNewProject] = useState('Patel Villa');
+  const [newProject, setNewProject] = useState('');
   const [isModalProjectOpen, setIsModalProjectOpen] = useState(false);
 
   const [newPriority, setNewPriority] = useState('High Priority');
@@ -237,6 +242,65 @@ export default function SupervisorRfis() {
   const statusRef = useRef(null);
 
   useEffect(() => {
+    getSupervisorProjects(user?.id).then((projects) => {
+      if (projects && projects.length > 0) {
+        const names = projects.map((p) => p.name);
+        setProjectOptions(['All Projects', ...names]);
+        setModalProjectOptions(names);
+        if (!newProject && names.length > 0) {
+          setNewProject(names[0]);
+        }
+      }
+    }).catch((err) => console.warn('Failed to load projects for RFIs:', err));
+  }, [user]);
+
+  // Merge convex RFIs with items
+  const allItems = [
+    ...convexRfis.map((cr) => ({
+      id: cr._id,
+      type: cr.type,
+      rfiCode: cr.rfiCode || cr._id.slice(-6),
+      title: cr.title,
+      project: cr.projectName,
+      status: cr.status,
+      statusBg:
+        cr.status === 'FLAGGED FOR ADMIN REVIEW'
+          ? 'bg-error/10 text-error border-error/20'
+          : cr.status === 'RESOLVED'
+          ? 'bg-success/10 text-success border-success/20'
+          : 'bg-amber-100 text-amber-900 border-amber-300',
+      updated: 'Live from Server',
+      priority: `${cr.priority} Priority`,
+      priorityColor:
+        cr.priority === 'High'
+          ? 'bg-error text-error'
+          : 'bg-amber-500 text-amber-600',
+      expanded: false,
+      details: cr.details,
+      rebuttal: cr.type === 'dispute' ? {
+        author: `${cr.createdByName} (${cr.createdByRole})`,
+        timestamp: new Date(cr.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        initialText: cr.details,
+        statusText: `Status: ${cr.status}`,
+        stepProgress: cr.status === 'RESOLVED' ? 100 : 66,
+      } : undefined,
+      messages: cr.type === 'rfi' && cr.details ? [
+        {
+          id: `m_${cr._id}`,
+          sender: cr.createdByName,
+          role: cr.createdByRole,
+          roleBg: 'bg-primary text-white border-primary',
+          time: new Date(cr.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          initials: cr.createdByName?.[0] || 'U',
+          text: cr.details,
+          isSelf: cr.createdByWorkerId === user?.id,
+        },
+      ] : [],
+    })),
+    ...items,
+  ];
+
+  useEffect(() => {
     function handleClickOutside(e) {
       if (projectRef.current && !projectRef.current.contains(e.target)) {
         setIsProjectDropdownOpen(false);
@@ -249,12 +313,18 @@ export default function SupervisorRfis() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const [expandedIds, setExpandedIds] = useState(new Set());
+
   const toggleExpand = (id) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, expanded: !item.expanded } : item
-      )
-    );
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const handleSendReply = (itemId, customText = null) => {
@@ -311,48 +381,30 @@ export default function SupervisorRfis() {
     setRebuttalInputs((prev) => ({ ...prev, [itemId]: '' }));
   };
 
-  const handleCreateRfi = (e) => {
+  const handleCreateRfi = async (e) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    const newItem = {
-      id: `rfi_${Date.now()}`,
-      type: 'rfi',
-      rfiCode: `RFI-2026-${Math.floor(100 + Math.random() * 900)}`,
-      title: newTitle.trim(),
-      project: newProject,
-      status: 'OPEN',
-      statusBg: 'bg-amber-100 text-amber-900 border-amber-300',
-      updated: 'Updated just now',
-      priority: newPriority,
-      priorityColor:
-        newPriority === 'High Priority'
-          ? 'bg-error text-error'
-          : 'bg-amber-500 text-amber-600',
-      expanded: true,
-      messages: newDescription
-        ? [
-            {
-              id: `m_${Date.now()}`,
-              sender: 'You (Supervisor)',
-              role: 'Supervisor',
-              roleBg: 'bg-primary text-white border-primary',
-              time: 'Just now',
-              initials: 'SU',
-              text: newDescription.trim(),
-              isSelf: true,
-            },
-          ]
-        : [],
-    };
+    try {
+      await createRfiMutation({
+        projectName: newProject || 'General Project',
+        createdByWorkerId: user?.id,
+        createdByName: user?.name || user?.firstName || 'Supervisor',
+        createdByRole: 'Supervisor',
+        title: newTitle.trim(),
+        details: newDescription.trim() || newTitle.trim(),
+        priority: newPriority.includes('High') ? 'High' : newPriority.includes('Low') ? 'Low' : 'Medium',
+      });
+    } catch (err) {
+      console.warn('Convex createRfi error:', err);
+    }
 
-    setItems((prev) => [newItem, ...prev]);
     setIsModalOpen(false);
     setNewTitle('');
     setNewDescription('');
   };
 
-  const filteredItems = items.filter((item) => {
+  const filteredItems = allItems.filter((item) => {
     if (activeTab === 'rfis' && item.type !== 'rfi') return false;
     if (activeTab === 'disputes' && item.type !== 'dispute') return false;
     if (selectedProject !== 'All Projects' && item.project !== selectedProject)
@@ -369,9 +421,7 @@ export default function SupervisorRfis() {
         <h1 className="text-xl font-bold font-heading text-text-primary">
           RFI & Disputes Hub
         </h1>
-        <button className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40">
-          <Bell size={20} className="text-text-secondary" />
-        </button>
+        <NotificationBellButton />
       </header>
 
       {/* ── Filter Controls (Matching Foreman Proxy Reason Dropdown Style) ── */}
@@ -434,7 +484,7 @@ export default function SupervisorRfis() {
 
             {isProjectDropdownOpen && (
               <div className="absolute z-30 w-full mt-1 bg-surface-card rounded-md shadow-lg border border-border overflow-hidden animate-fade-in">
-                {PROJECT_OPTIONS.map((proj) => (
+                {projectOptions.map((proj) => (
                   <button
                     key={proj}
                     type="button"
@@ -505,306 +555,231 @@ export default function SupervisorRfis() {
 
       {/* ── Main Content List ────────────────────────────────── */}
       <div className="flex flex-col gap-4 p-4 pb-36 max-w-4xl mx-auto w-full">
-        {filteredItems.map((item) => (
-          <div
-            key={item.id}
-            className={[
-              'bg-surface-card rounded-md border transition-all duration-default shadow-sm hover:shadow-md overflow-hidden',
-              item.expanded && item.type === 'rfi'
-                ? 'border-primary ring-1 ring-primary/30'
-                : item.expanded && item.type === 'dispute'
-                ? 'border-error ring-1 ring-error/30'
-                : 'border-border',
-            ].join(' ')}
-          >
-            {/* Card Summary Header */}
+        {filteredItems.map((item) => {
+          const isExpanded = expandedIds.has(item.id);
+
+          return (
             <div
-              onClick={() => toggleExpand(item.id)}
-              className="p-4 flex flex-col gap-3 cursor-pointer hover:bg-surface/50 transition-colors"
+              key={item.id}
+              className={[
+                'bg-surface-card rounded-md border transition-all duration-default shadow-sm hover:shadow-md overflow-hidden',
+                isExpanded && item.type === 'rfi'
+                  ? 'border-primary ring-1 ring-primary/30'
+                  : isExpanded && item.type === 'dispute'
+                  ? 'border-error ring-1 ring-error/30'
+                  : 'border-border',
+              ].join(' ')}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={[
-                      'w-10 h-10 rounded-md flex items-center justify-center shrink-0 border shadow-xs',
-                      item.type === 'rfi'
-                        ? 'bg-primary/10 text-primary border-primary/20'
-                        : 'bg-error/10 text-error border-error/20',
-                    ].join(' ')}
-                  >
-                    {item.type === 'rfi' ? (
-                      <FileText size={20} />
-                    ) : (
-                      <AlertTriangle size={20} />
-                    )}
-                  </div>
-
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono font-bold text-text-muted uppercase">
-                        {item.rfiCode || item.disputeCode}
-                      </span>
-                    </div>
-                    <h3 className="text-base font-bold font-heading text-text-primary leading-tight">
-                      {item.title}
-                    </h3>
-                    <span className="text-xs text-text-secondary mt-0.5">
-                      {item.project}
-                    </span>
-                  </div>
-                </div>
-
-                <button className="text-text-muted hover:text-text-primary p-1 rounded-md hover:bg-surface">
-                  {item.expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                </button>
-              </div>
-
-              {/* Status & Priority */}
-              <div className="flex items-center justify-between pt-1 border-t border-border/40">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={[
-                      'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border',
-                      item.statusBg,
-                    ].join(' ')}
-                  >
-                    {item.status}
-                  </span>
-                  <span className="text-[11px] text-text-muted">
-                    {item.updated}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${item.priorityColor.split(' ')[0]}`} />
-                  <span className={`text-[11px] font-semibold ${item.priorityColor.split(' ')[1]}`}>
-                    {item.priority}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* ── EXPANDED RFI DROPDOWN WINDOW (EXACT FOREMAN STYLE) ─ */}
-            {item.expanded && item.type === 'rfi' && (
-              <div className="bg-slate-50/80 border-t border-border p-4 flex flex-col gap-4">
-
-                {/* Sub-Header Metadata Ribbon */}
-                <div className="bg-surface-card border border-border rounded-md p-3 flex items-center justify-between text-xs text-text-secondary shadow-2xs">
-                  <div className="flex items-center gap-2">
-                    <Clock size={14} className="text-primary shrink-0" />
-                    <span>Assigned: <strong className="text-text-primary">{item.assignedTeam || 'Engineering Team'}</strong></span>
-                  </div>
-                  <span className="text-[10px] font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">
-                    ACTIVE THREAD
-                  </span>
-                </div>
-
-                {/* Rich Chat Messages Thread */}
-                <div className="flex flex-col gap-3.5">
-                  {item.messages && item.messages.length > 0 ? (
-                    item.messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex gap-3 items-start ${
-                          msg.isSelf ? 'justify-end' : 'justify-start'
-                        }`}
-                      >
-                        {!msg.isSelf && (
-                          <div className="w-8 h-8 rounded-full bg-slate-700 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
-                            {msg.initials}
-                          </div>
-                        )}
-
-                        <div className="flex flex-col gap-1.5 max-w-[85%]">
-                          {/* Sender Info Line */}
-                          <div
-                            className={`flex items-center gap-2 text-xs ${
-                              msg.isSelf ? 'flex-row-reverse' : ''
-                            }`}
-                          >
-                            <span className="font-bold text-text-primary">
-                              {msg.sender}
-                            </span>
-                            <span
-                              className={`text-[10px] px-2 py-0.2 rounded-full font-semibold border ${msg.roleBg}`}
-                            >
-                              {msg.role}
-                            </span>
-                            <span className="text-text-muted text-[10px]">
-                              {msg.time}
-                            </span>
-                          </div>
-
-                          {/* Message Body */}
-                          <div
-                            className={[
-                              'p-3.5 rounded-md text-xs leading-relaxed border shadow-xs',
-                              msg.isSelf
-                                ? 'bg-primary text-white border-primary rounded-tr-none'
-                                : 'bg-surface-card text-text-primary border-border rounded-tl-none',
-                            ].join(' ')}
-                          >
-                            <p>{msg.text}</p>
-
-                            {/* Attachment Pill */}
-                            {msg.attachment && (
-                              <div className="mt-2.5 p-2 rounded bg-black/10 flex items-center gap-2 text-[11px] font-mono border border-black/10">
-                                <FileCode size={16} className="shrink-0" />
-                                <div className="flex flex-col truncate">
-                                  <span className="font-bold truncate">{msg.attachment.name}</span>
-                                  <span className="text-[9px] opacity-80">{msg.attachment.size}</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-xs text-text-muted italic bg-surface-card border border-border rounded-md">
-                      No messages yet in this RFI thread.
-                    </div>
-                  )}
-                </div>
-
-                {/* Quick Action Chips */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
-                  <Sparkles size={14} className="text-amber-500 shrink-0" />
-                  {QUICK_CHIPS.map((chip, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleSendReply(item.id, chip)}
-                      className="px-3 py-1 bg-surface-card border border-border hover:border-primary text-text-secondary hover:text-primary rounded-full text-xs font-semibold whitespace-nowrap transition-colors shadow-2xs"
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Executive Reply Toolbar */}
-                <div className="flex items-center gap-2 pt-2 border-t border-border">
-                  <button className="p-2.5 rounded-md border border-border bg-surface-card text-text-secondary hover:text-primary hover:border-primary transition-colors shrink-0">
-                    <Paperclip size={18} />
-                  </button>
-                  <input
-                    type="text"
-                    placeholder="Type official response..."
-                    value={replyInputs[item.id] || ''}
-                    onChange={(e) =>
-                      setReplyInputs({ ...replyInputs, [item.id]: e.target.value })
-                    }
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendReply(item.id)}
-                    className="flex-1 bg-surface-card border border-border rounded-md px-4 py-2.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-inner"
-                  />
-                  <button
-                    onClick={() => handleSendReply(item.id)}
-                    className="px-4 py-2.5 rounded-md bg-primary text-white font-bold text-xs flex items-center gap-1.5 hover:bg-primary-light transition-all active:scale-95 shadow-md shrink-0 uppercase tracking-wider"
-                  >
-                    <span>Send</span>
-                    <Send size={14} />
-                  </button>
-                </div>
-
-              </div>
-            )}
-
-            {/* ── EXPANDED DISPUTE DROPDOWN WINDOW ─────────────── */}
-            {item.expanded && item.type === 'dispute' && (
-              <div className="bg-slate-50/80 border-t border-border p-4 flex flex-col gap-4">
-
-                {/* Audit Status Bar */}
-                <div className="bg-surface-card border border-border rounded-md p-3.5 flex flex-col gap-2 shadow-2xs">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-text-primary flex items-center gap-1.5">
-                      <ShieldCheck size={16} className="text-error" />
-                      Dispute Audit Trail #{item.disputeCode}
-                    </span>
-                    <span className="text-[10px] font-bold uppercase text-error px-2 py-0.5 bg-error/10 rounded">
-                      Action Required
-                    </span>
-                  </div>
-
-                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+              {/* Card Summary Header */}
+              <div
+                onClick={() => toggleExpand(item.id)}
+                className="p-4 flex flex-col gap-3 cursor-pointer hover:bg-surface/50 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
                     <div
-                      className="bg-error h-full transition-all duration-default"
-                      style={{ width: `${item.rebuttal?.stepProgress || 50}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Existing Evidence Card */}
-                {item.rebuttal && (
-                  <div className="bg-surface-card border border-border rounded-md p-3.5 flex flex-col gap-1.5 shadow-xs">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold text-text-primary">
-                        {item.rebuttal.author || 'Supervisor Logged Rebuttal'}
-                      </span>
-                      <span className="text-text-muted text-[10px]">
-                        {item.rebuttal.timestamp}
-                      </span>
+                      className={[
+                        'w-10 h-10 rounded-md flex items-center justify-center shrink-0 border shadow-xs',
+                        item.type === 'rfi'
+                          ? 'bg-primary/10 text-primary border-primary/20'
+                          : 'bg-error/10 text-error border-error/20',
+                      ].join(' ')}
+                    >
+                      {item.type === 'rfi' ? (
+                        <FileText size={20} />
+                      ) : (
+                        <AlertTriangle size={20} />
+                      )}
                     </div>
 
-                    <p className="text-xs text-text-primary leading-relaxed">
-                      {item.rebuttal.initialText}
-                    </p>
-
-                    {item.rebuttal.attachment && (
-                      <div className="mt-1 p-2 bg-slate-100 rounded-md border border-border flex items-center gap-2 text-xs">
-                        <ImageIcon size={16} className="text-primary shrink-0" />
-                        <span className="font-mono font-bold text-text-primary truncate">
-                          {item.rebuttal.attachment.name}
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono font-bold text-text-muted uppercase">
+                          {item.rfiCode || item.disputeCode}
                         </span>
                       </div>
-                    )}
+                      <h3 className="text-base font-bold font-heading text-text-primary leading-tight">
+                        {item.title}
+                      </h3>
+                      <span className="text-xs text-text-secondary mt-0.5">
+                        {item.project}
+                      </span>
+                    </div>
                   </div>
-                )}
 
-                {/* Evidence Input Area */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">
-                    Add Supporting Evidence / Site Photo
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Provide exact details, gate logs, or site observations..."
-                    value={rebuttalInputs[item.id] || ''}
-                    onChange={(e) =>
-                      setRebuttalInputs({
-                        ...rebuttalInputs,
-                        [item.id]: e.target.value,
-                      })
-                    }
-                    className="w-full bg-surface-card border border-border rounded-md p-3 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-error/40 resize-none shadow-inner"
-                  />
+                  <button className="text-text-muted hover:text-text-primary p-1 rounded-md hover:bg-surface">
+                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                  </button>
+                </div>
 
+                {/* Status & Priority */}
+                <div className="flex items-center justify-between pt-1 border-t border-border/40">
                   <div className="flex items-center gap-2">
-                    <button className="px-3 py-2 bg-surface-card border border-border hover:border-text-primary text-text-secondary text-xs font-semibold rounded-md flex items-center gap-1.5">
-                      <ImageIcon size={14} />
-                      <span>Attach Photo</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleSubmitRebuttal(item.id)}
-                      className="flex-1 bg-error text-white font-bold text-xs py-2.5 rounded-md uppercase tracking-wider hover:bg-error/90 transition-all active:scale-95 shadow-md text-center"
+                    <span
+                      className={[
+                        'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border',
+                        item.statusBg,
+                      ].join(' ')}
                     >
-                      Submit Rebuttal Evidence
-                    </button>
+                      {item.status}
+                    </span>
+                    <span className="text-[11px] text-text-muted">
+                      {item.updated}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${item.priorityColor.split(' ')[0]}`} />
+                    <span className={`text-[11px] font-semibold ${item.priorityColor.split(' ')[1]}`}>
+                      {item.priority}
+                    </span>
                   </div>
                 </div>
-
-                {/* Admin Status Note */}
-                <div className="border-t border-border pt-3 flex items-center gap-2 text-xs text-text-secondary">
-                  <CheckCheck size={16} className="text-success shrink-0" />
-                  <span className="italic">
-                    {item.rebuttal?.statusText ||
-                      'Awaiting Admin review of submitted evidence.'}
-                  </span>
-                </div>
-
               </div>
-            )}
-          </div>
-        ))}
+
+              {/* ── EXPANDED RFI DROPDOWN WINDOW ──────────────────── */}
+              {isExpanded && item.type === 'rfi' && (
+                <div className="bg-slate-50/80 border-t border-border p-4 flex flex-col gap-3.5">
+
+                  {/* Sub-Header Metadata Ribbon */}
+                  <div className="bg-surface-card border border-border rounded-md p-3 flex items-center justify-between text-xs text-text-secondary shadow-2xs">
+                    <div className="flex items-center gap-2">
+                      <Clock size={14} className="text-primary shrink-0" />
+                      <span>Project: <strong className="text-text-primary">{item.project}</strong></span>
+                    </div>
+                    <span className="text-[10px] font-mono bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-bold">
+                      {item.status}
+                    </span>
+                  </div>
+
+                  {/* Primary Supervisor Message / Details Card */}
+                  <div className="bg-surface-card border border-border rounded-md p-4 flex flex-col gap-2.5 shadow-xs">
+                    <div className="flex justify-between items-center text-xs border-b border-border/50 pb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold">
+                          S
+                        </div>
+                        <span className="font-bold text-text-primary">
+                          Inquiry Message Sent to Admin
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-text-muted">{item.updated}</span>
+                    </div>
+
+                    <p className="text-xs text-text-primary leading-relaxed whitespace-pre-wrap font-medium">
+                      {item.details || (item.messages && item.messages[0]?.text) || 'Inquiry details submitted to admin.'}
+                    </p>
+                  </div>
+
+                  {/* Threaded Follow-up Messages if any */}
+                  {item.messages && item.messages.length > 1 && (
+                    <div className="flex flex-col gap-2.5">
+                      {item.messages.slice(1).map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`flex gap-2.5 items-start ${
+                            msg.isSelf ? 'justify-end' : 'justify-start'
+                          }`}
+                        >
+                          {!msg.isSelf && (
+                            <div className="w-7 h-7 rounded-full bg-slate-700 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
+                              {msg.initials || 'A'}
+                            </div>
+                          )}
+
+                          <div className="flex flex-col gap-1 max-w-[85%]">
+                            <div
+                              className={`flex items-center gap-1.5 text-[11px] ${
+                                msg.isSelf ? 'flex-row-reverse' : ''
+                              }`}
+                            >
+                              <span className="font-bold text-text-primary">{msg.sender}</span>
+                              <span className="text-text-muted text-[10px]">{msg.time}</span>
+                            </div>
+
+                            <div
+                              className={[
+                                'p-3 rounded-md text-xs leading-relaxed border shadow-xs',
+                                msg.isSelf
+                                  ? 'bg-primary text-white border-primary rounded-tr-none'
+                                  : 'bg-surface-card text-text-primary border-border rounded-tl-none',
+                              ].join(' ')}
+                            >
+                              <p>{msg.text}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Status Indicator Bar */}
+                  <div className="border-t border-border pt-2 flex items-center gap-2 text-xs text-text-secondary">
+                    <CheckCheck size={15} className="text-primary shrink-0" />
+                    <span className="italic">
+                      Status: {item.status} — Visible in Admin Console & RFI Hub
+                    </span>
+                  </div>
+
+                </div>
+              )}
+
+              {/* ── EXPANDED DISPUTE DROPDOWN WINDOW ─────────────── */}
+              {isExpanded && item.type === 'dispute' && (
+                <div className="bg-slate-50/80 border-t border-border p-4 flex flex-col gap-3.5">
+
+                  {/* Audit Status Bar */}
+                  <div className="bg-surface-card border border-border rounded-md p-3.5 flex flex-col gap-2 shadow-2xs">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-text-primary flex items-center gap-1.5">
+                        <ShieldCheck size={16} className="text-error" />
+                        Attendance Dispute Audit #{item.rfiCode || item.id.slice(-5)}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase text-error px-2.5 py-0.5 bg-error/10 rounded-full">
+                        {item.status}
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-error h-full transition-all duration-default"
+                        style={{ width: item.status === 'RESOLVED' ? '100%' : '65%' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Supervisor Sent Dispute Reason & Explanation Box */}
+                  <div className="bg-surface-card border border-border rounded-md p-4 flex flex-col gap-2.5 shadow-xs">
+                    <div className="flex justify-between items-center text-xs border-b border-border/50 pb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold">
+                          S
+                        </div>
+                        <span className="font-bold text-text-primary">
+                          Reason / Explanation Sent to Admin
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-text-muted">{item.updated}</span>
+                    </div>
+
+                    <p className="text-xs text-text-primary leading-relaxed whitespace-pre-wrap font-medium">
+                      {item.details || item.rebuttal?.initialText || 'Supervisor attendance explanation submitted to admin.'}
+                    </p>
+                  </div>
+
+                  {/* Admin Status Note */}
+                  <div className="border-t border-border pt-2 flex items-center gap-2 text-xs text-text-secondary">
+                    <CheckCheck size={15} className="text-success shrink-0" />
+                    <span className="italic">
+                      Status: {item.status} — Logged and visible in Admin Console
+                    </span>
+                  </div>
+
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* ── Floating Action Button (FAB) ────────────────────── */}
@@ -866,7 +841,7 @@ export default function SupervisorRfis() {
 
                   {isModalProjectOpen && (
                     <div className="absolute z-30 w-full mt-1 bg-surface-card rounded-md shadow-lg border border-border overflow-hidden animate-fade-in">
-                      {MODAL_PROJECT_OPTIONS.map((proj) => (
+                      {modalProjectOptions.map((proj) => (
                         <button
                           key={proj}
                           type="button"

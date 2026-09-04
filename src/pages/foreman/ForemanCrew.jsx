@@ -1,54 +1,10 @@
-import { useState } from 'react';
-import { Bell, UserCheck, ChevronDown, Check, X, ShieldAlert } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Bell, UserCheck, ChevronDown, Check, X } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
+import { getCrewAttendance, proxyCheckIn } from '../../services/attendanceService';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
-
-/**
- * ForemanCrew — Crew Management & Proxy Clock-In page for foremen.
- * Matches Stitch Screen "Foreman Crew Management - Refined Proxy Dropdown".
- *
- * Features:
- *   1. KPI Strip: Total (12), Present (10), Absent (2)
- *   2. "Action Required: Not Clocked In" list with "Proxy In" CTA
- *   3. "Currently On Site" list with check-in time and check-in type (Self / Proxy)
- *   4. Interactive "Log Proxy Attendance" Modal with reason dropdown options:
- *        - Phone Dead
- *        - No Network
- *        - App Issue
- */
-
-const INITIAL_UNCLOCKED = [
-  { id: 'usr_01', name: 'Amit Sharma', role: 'Senior Technician', avatar: 'A' },
-  { id: 'usr_02', name: 'Suresh Kumar', role: 'Electrician', avatar: 'S' },
-];
-
-const INITIAL_ON_SITE = [
-  {
-    id: 'usr_03',
-    name: 'Rahul Desai',
-    role: 'Lead Technician',
-    time: '07:55 AM',
-    type: 'Self',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-  },
-  {
-    id: 'usr_04',
-    name: 'Vikram Singh',
-    role: 'Plumber',
-    time: '08:12 AM',
-    type: 'Proxy',
-    avatar: null,
-  },
-  {
-    id: 'usr_05',
-    name: 'Priya Patel',
-    role: 'Safety Officer',
-    time: '07:45 AM',
-    type: 'Self',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200',
-  },
-];
+import NotificationBellButton from '../../components/NotificationBellButton';
 
 const PROXY_REASONS = [
   { value: 'phone_dead', label: 'Phone Dead' },
@@ -59,14 +15,59 @@ const PROXY_REASONS = [
 export default function ForemanCrew() {
   const user = useAuthStore((s) => s.user);
 
-  const [unclockedList, setUnclockedList] = useState(INITIAL_UNCLOCKED);
-  const [onSiteList, setOnSiteList] = useState(INITIAL_ON_SITE);
+  const [unclockedList, setUnclockedList] = useState([]);
+  const [onSiteList, setOnSiteList] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTech, setSelectedTech] = useState(null);
   const [proxyReason, setProxyReason] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const loadCrew = useCallback(async () => {
+    if (!user?.id) return;
+    setIsLoading(true);
+    try {
+      const crew = await getCrewAttendance(user.id);
+      const onSite = [];
+      const unclocked = [];
+
+      if (crew && crew.length > 0) {
+        crew.forEach((member) => {
+          if (member.isPresent) {
+            onSite.push({
+              id: member.id,
+              name: member.name,
+              role: member.role,
+              time: member.checkInTime || '08:00 AM',
+              type: member.type || 'Self',
+              avatar: null,
+            });
+          } else {
+            unclocked.push({
+              id: member.id,
+              name: member.name,
+              role: member.role,
+              avatar: member.name[0] || 'W',
+            });
+          }
+        });
+      }
+      setOnSiteList(onSite);
+      setUnclockedList(unclocked);
+    } catch (err) {
+      console.warn('Failed to load live crew attendance:', err);
+      setOnSiteList([]);
+      setUnclockedList([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadCrew();
+  }, [loadCrew]);
 
   const handleOpenModal = (tech) => {
     setSelectedTech(tech);
@@ -82,8 +83,21 @@ export default function ForemanCrew() {
     setIsDropdownOpen(false);
   };
 
-  const handleSubmitProxy = () => {
+  const handleSubmitProxy = async () => {
     if (!selectedTech || !proxyReason) return;
+
+    try {
+      if (user?.id) {
+        await proxyCheckIn(
+          user.id,
+          selectedTech.id,
+          null,
+          PROXY_REASONS.find((r) => r.value === proxyReason)?.label || proxyReason
+        );
+      }
+    } catch (err) {
+      console.error('Proxy check-in error:', err);
+    }
 
     const now = new Date();
     const formattedTime = now.toLocaleTimeString('en-US', {
@@ -92,7 +106,7 @@ export default function ForemanCrew() {
       hour12: true,
     });
 
-    // Move technician from unclocked to on-site list
+    // Optimistically move technician from unclocked to on-site list
     setUnclockedList((prev) => prev.filter((t) => t.id !== selectedTech.id));
     setOnSiteList((prev) => [
       {
@@ -109,7 +123,7 @@ export default function ForemanCrew() {
     handleCloseModal();
   };
 
-  const presentCount = onSiteList.length + 7; // total present out of 12
+  const presentCount = onSiteList.length;
   const absentCount = unclockedList.length;
   const totalCount = presentCount + absentCount;
 
@@ -121,11 +135,9 @@ export default function ForemanCrew() {
           <h1 className="text-xl font-medium font-heading text-text-primary">
             Site Crew
           </h1>
-          <p className="text-sm text-text-secondary">Patel Villa Site</p>
+          <p className="text-sm text-text-secondary">{user?.name ? `${user.name} • ` : ''}Foreman</p>
         </div>
-        <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40">
-          <Bell size={20} className="text-text-primary" />
-        </button>
+        <NotificationBellButton />
       </header>
 
       {/* ── Main Content ────────────────────────────────────── */}
@@ -182,7 +194,7 @@ export default function ForemanCrew() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold font-heading">
-                      {tech.avatar}
+                      {tech.avatar || tech.name[0]}
                     </div>
                     <div className="flex flex-col">
                       <span className="text-base font-semibold font-heading text-text-primary">
@@ -218,61 +230,59 @@ export default function ForemanCrew() {
           </h2>
 
           <Card padding="none" className="border border-border overflow-hidden shadow-sm">
-            {onSiteList.map((tech, idx) => (
-              <div
-                key={tech.id}
-                className={[
-                  'flex items-center justify-between p-4 transition-colors',
-                  idx !== onSiteList.length - 1 ? 'border-b border-border' : '',
-                ].join(' ')}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="relative w-10 h-10">
-                    {tech.avatar ? (
-                      <img
-                        src={tech.avatar}
-                        alt={tech.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
+            {onSiteList.length > 0 ? (
+              onSiteList.map((tech, idx) => (
+                <div
+                  key={tech.id}
+                  className={[
+                    'flex items-center justify-between p-4 transition-colors',
+                    idx !== onSiteList.length - 1 ? 'border-b border-border' : '',
+                  ].join(' ')}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-10 h-10">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold font-heading">
                         {tech.name[0]}
                       </div>
-                    )}
-                    {/* Status dot */}
-                    <div
+                      {/* Status dot */}
+                      <div
+                        className={[
+                          'absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white',
+                          tech.type === 'Self' ? 'bg-success' : 'bg-warning',
+                        ].join(' ')}
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <span className="text-base font-semibold font-heading text-text-primary">
+                        {tech.name}
+                      </span>
+                      <span className="text-xs text-text-secondary">
+                        {tech.role}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-sm font-mono text-text-primary block font-medium">
+                      {tech.time}
+                    </span>
+                    <span
                       className={[
-                        'absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white',
-                        tech.type === 'Self' ? 'bg-success' : 'bg-warning',
+                        'text-xs font-semibold block mt-0.5',
+                        tech.type === 'Self' ? 'text-text-secondary' : 'text-amber-600',
                       ].join(' ')}
-                    />
-                  </div>
-
-                  <div className="flex flex-col">
-                    <span className="text-base font-semibold font-heading text-text-primary">
-                      {tech.name}
-                    </span>
-                    <span className="text-xs text-text-secondary">
-                      {tech.role}
+                    >
+                      {tech.type}
                     </span>
                   </div>
                 </div>
-
-                <div className="text-right">
-                  <span className="text-sm font-mono text-text-primary block font-medium">
-                    {tech.time}
-                  </span>
-                  <span
-                    className={[
-                      'text-xs font-semibold block mt-0.5',
-                      tech.type === 'Self' ? 'text-text-secondary' : 'text-amber-600',
-                    ].join(' ')}
-                  >
-                    {tech.type}
-                  </span>
-                </div>
+              ))
+            ) : (
+              <div className="p-4 text-center text-sm text-text-muted">
+                No crew members currently on site.
               </div>
-            ))}
+            )}
           </Card>
         </div>
 

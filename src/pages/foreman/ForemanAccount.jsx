@@ -3,6 +3,7 @@ import { Bell, Building2, Lock, ChevronRight, LogOut } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
+import NotificationBellButton from '../../components/NotificationBellButton';
 
 /**
  * ForemanAccount — Account & Settings landing page for foremen.
@@ -36,9 +37,7 @@ export default function ForemanAccount() {
         <h1 className="text-2xl font-semibold font-heading text-text-primary tracking-tight">
           Account
         </h1>
-        <button className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40">
-          <Bell size={20} className="text-text-primary" />
-        </button>
+        <NotificationBellButton />
       </header>
 
       {/* ── Main Content ────────────────────────────────────── */}

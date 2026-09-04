@@ -110,7 +110,7 @@ export default function TechnicianProfile() {
             <Input
               label="Mobile"
               id="profile-mobile"
-              value={user?.phone || ''}
+              value={user?.mobile || user?.phone || ''}
               readOnly
               className="opacity-70"
             />

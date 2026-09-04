@@ -68,8 +68,11 @@ export default function TechnicianChangePin() {
     setLoading(true);
 
     try {
-      // Simulate API call to change PIN
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      if (user?.id) {
+        await authService.changePin(user.id, currentPin, newPin);
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
 
       setLoading(false);
       setSuccess(true);
@@ -80,7 +83,7 @@ export default function TechnicianChangePin() {
       }, 1500);
     } catch (err) {
       setLoading(false);
-      setError('Failed to update PIN. Please try again.');
+      setError(err.message || 'Failed to update PIN. Please try again.');
     }
   };
 
