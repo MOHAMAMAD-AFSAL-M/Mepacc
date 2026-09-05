@@ -13,6 +13,8 @@ import {
   AlertTriangle,
   MessageSquare,
   CheckCircle2,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex.js';
@@ -51,6 +53,7 @@ export default function DesignerProjectDrawings() {
   const [formNotes, setFormNotes] = useState('');
   const [formFile, setFormFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   // Form states for Revision Upload
@@ -520,21 +523,47 @@ export default function DesignerProjectDrawings() {
             </div>
 
             <form onSubmit={handleCreateBlueprint} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 relative">
                 <label className="text-xs font-semibold text-text-secondary">Category</label>
-                <select
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-surface border border-border rounded text-xs text-text-primary"
-                  required
-                >
-                  <option value="Electrical">Electrical</option>
-                  <option value="Plumbing">Plumbing</option>
-                  <option value="HVAC">HVAC</option>
-                  <option value="Fire Protection">Fire Protection</option>
-                  <option value="Architectural">Architectural</option>
-                  <option value="Other">Other</option>
-                </select>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                    className="w-full flex items-center justify-between bg-surface-card border border-border-strong text-text-primary text-sm rounded-sm px-3 py-2.5 hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <span>{formCategory}</span>
+                    <ChevronDown
+                      size={16}
+                      className={`text-text-muted transition-transform duration-200 ${
+                        isCategoryDropdownOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {isCategoryDropdownOpen && (
+                    <div className="absolute z-20 w-full mt-1 bg-surface-card rounded-sm shadow-md border border-border overflow-hidden">
+                      {CATEGORIES.filter((c) => c !== 'All').map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => {
+                            setFormCategory(option);
+                            setIsCategoryDropdownOpen(false);
+                          }}
+                          className={[
+                            'w-full text-left px-3 py-2.5 text-sm flex items-center justify-between transition-colors',
+                            formCategory === option
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'text-text-primary hover:bg-surface',
+                          ].join(' ')}
+                        >
+                          <span>{option}</span>
+                          {formCategory === option && <Check size={16} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-col gap-1">

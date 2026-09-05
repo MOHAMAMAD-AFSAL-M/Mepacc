@@ -471,7 +471,7 @@ export default function SupervisorRfis() {
             <button
               type="button"
               onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
-              className="w-full flex items-center justify-between bg-surface-card border border-border-strong text-text-primary text-xs font-medium rounded-md px-3.5 py-2 hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full flex items-center justify-between bg-surface-card border border-border-strong text-text-primary text-sm rounded-sm px-3 py-2.5 hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <span className="truncate">{selectedProject}</span>
               <ChevronDown
@@ -483,7 +483,7 @@ export default function SupervisorRfis() {
             </button>
 
             {isProjectDropdownOpen && (
-              <div className="absolute z-30 w-full mt-1 bg-surface-card rounded-md shadow-lg border border-border overflow-hidden animate-fade-in">
+              <div className="absolute z-30 w-full mt-1 bg-surface-card rounded-sm shadow-md border border-border overflow-hidden animate-fade-in">
                 {projectOptions.map((proj) => (
                   <button
                     key={proj}
@@ -493,14 +493,14 @@ export default function SupervisorRfis() {
                       setIsProjectDropdownOpen(false);
                     }}
                     className={[
-                      'w-full text-left px-3.5 py-2.5 text-xs flex items-center justify-between transition-colors border-b border-border/40 last:border-none',
+                      'w-full text-left px-3 py-2.5 text-sm flex items-center justify-between transition-colors',
                       selectedProject === proj
-                        ? 'bg-primary/10 text-primary font-bold'
-                        : 'text-text-primary hover:bg-surface-container-low',
+                        ? 'bg-primary/10 text-primary font-medium'
+                        : 'text-text-primary hover:bg-surface',
                     ].join(' ')}
                   >
                     <span>{proj}</span>
-                    {selectedProject === proj && <Check size={14} className="text-primary" />}
+                    {selectedProject === proj && <Check size={16} className="text-primary" />}
                   </button>
                 ))}
               </div>
@@ -512,7 +512,7 @@ export default function SupervisorRfis() {
             <button
               type="button"
               onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-              className="w-full flex items-center justify-between bg-surface-card border border-border-strong text-text-primary text-xs font-medium rounded-md px-3.5 py-2 hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full flex items-center justify-between bg-surface-card border border-border-strong text-text-primary text-sm rounded-sm px-3 py-2.5 hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <span className="truncate">
                 {STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label}
@@ -526,7 +526,7 @@ export default function SupervisorRfis() {
             </button>
 
             {isStatusDropdownOpen && (
-              <div className="absolute z-30 w-full mt-1 bg-surface-card rounded-md shadow-lg border border-border overflow-hidden animate-fade-in">
+              <div className="absolute z-30 w-full mt-1 bg-surface-card rounded-sm shadow-md border border-border overflow-hidden animate-fade-in">
                 {STATUS_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -536,14 +536,14 @@ export default function SupervisorRfis() {
                       setIsStatusDropdownOpen(false);
                     }}
                     className={[
-                      'w-full text-left px-3.5 py-2.5 text-xs flex items-center justify-between transition-colors border-b border-border/40 last:border-none',
+                      'w-full text-left px-3 py-2.5 text-sm flex items-center justify-between transition-colors',
                       selectedStatus === opt.value
-                        ? 'bg-primary/10 text-primary font-bold'
-                        : 'text-text-primary hover:bg-surface-container-low',
+                        ? 'bg-primary/10 text-primary font-medium'
+                        : 'text-text-primary hover:bg-surface',
                     ].join(' ')}
                   >
                     <span>{opt.label}</span>
-                    {selectedStatus === opt.value && <Check size={14} className="text-primary" />}
+                    {selectedStatus === opt.value && <Check size={16} className="text-primary" />}
                   </button>
                 ))}
               </div>
@@ -828,7 +828,7 @@ export default function SupervisorRfis() {
                   <button
                     type="button"
                     onClick={() => setIsModalProjectOpen(!isModalProjectOpen)}
-                    className="w-full flex items-center justify-between bg-surface-card border border-border-strong text-text-primary text-xs font-medium rounded-md px-3.5 py-2.5 hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full flex items-center justify-between bg-surface-card border border-border-strong text-text-primary text-sm rounded-sm px-3 py-2.5 hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
                   >
                     <span>{newProject}</span>
                     <ChevronDown
@@ -840,7 +840,7 @@ export default function SupervisorRfis() {
                   </button>
 
                   {isModalProjectOpen && (
-                    <div className="absolute z-30 w-full mt-1 bg-surface-card rounded-md shadow-lg border border-border overflow-hidden animate-fade-in">
+                    <div className="absolute z-30 w-full mt-1 bg-surface-card rounded-sm shadow-md border border-border overflow-hidden animate-fade-in">
                       {modalProjectOptions.map((proj) => (
                         <button
                           key={proj}
@@ -850,14 +850,14 @@ export default function SupervisorRfis() {
                             setIsModalProjectOpen(false);
                           }}
                           className={[
-                            'w-full text-left px-3.5 py-2.5 text-xs flex items-center justify-between transition-colors border-b border-border/40 last:border-none',
+                            'w-full text-left px-3 py-2.5 text-sm flex items-center justify-between transition-colors',
                             newProject === proj
-                              ? 'bg-primary/10 text-primary font-bold'
-                              : 'text-text-primary hover:bg-surface-container-low',
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'text-text-primary hover:bg-surface',
                           ].join(' ')}
                         >
                           <span>{proj}</span>
-                          {newProject === proj && <Check size={14} className="text-primary" />}
+                          {newProject === proj && <Check size={16} className="text-primary" />}
                         </button>
                       ))}
                     </div>
@@ -874,7 +874,7 @@ export default function SupervisorRfis() {
                   <button
                     type="button"
                     onClick={() => setIsModalPriorityOpen(!isModalPriorityOpen)}
-                    className="w-full flex items-center justify-between bg-surface-card border border-border-strong text-text-primary text-xs font-medium rounded-md px-3.5 py-2.5 hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full flex items-center justify-between bg-surface-card border border-border-strong text-text-primary text-sm rounded-sm px-3 py-2.5 hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
                   >
                     <span>{newPriority}</span>
                     <ChevronDown
@@ -886,7 +886,7 @@ export default function SupervisorRfis() {
                   </button>
 
                   {isModalPriorityOpen && (
-                    <div className="absolute z-30 w-full mt-1 bg-surface-card rounded-md shadow-lg border border-border overflow-hidden animate-fade-in">
+                    <div className="absolute z-30 w-full mt-1 bg-surface-card rounded-sm shadow-md border border-border overflow-hidden animate-fade-in">
                       {MODAL_PRIORITY_OPTIONS.map((prio) => (
                         <button
                           key={prio}
@@ -896,14 +896,14 @@ export default function SupervisorRfis() {
                             setIsModalPriorityOpen(false);
                           }}
                           className={[
-                            'w-full text-left px-3.5 py-2.5 text-xs flex items-center justify-between transition-colors border-b border-border/40 last:border-none',
+                            'w-full text-left px-3 py-2.5 text-sm flex items-center justify-between transition-colors',
                             newPriority === prio
-                              ? 'bg-primary/10 text-primary font-bold'
-                              : 'text-text-primary hover:bg-surface-container-low',
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'text-text-primary hover:bg-surface',
                           ].join(' ')}
                         >
                           <span>{prio}</span>
-                          {newPriority === prio && <Check size={14} className="text-primary" />}
+                          {newPriority === prio && <Check size={16} className="text-primary" />}
                         </button>
                       ))}
                     </div>
